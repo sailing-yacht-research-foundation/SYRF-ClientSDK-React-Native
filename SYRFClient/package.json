@@ -2,10 +2,23 @@
 {
   "name": "react-native-syrf-client",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "The SYRF Client SDK simplifies race and regatta management for React-Native apps.",
+  "main": "src/index.js",
+  "module": "lib/module/index.js",
+  "react-native": "src/index.js",
+  "source": "src/index.js",
+  "files": [
+    "src/",
+    "lib/"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "start": "react-native start",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint . --ext .js,.ts,.tsx' .",
+    "prettier": "prettier",
+    "prepare": "bob build"
   },
   "keywords": [
     "react-native"
@@ -13,9 +26,27 @@
   "author": "",
   "license": "",
   "peerDependencies": {
+    "react": "17.0.1",
     "react-native": "^0.64.2"
   },
   "devDependencies": {
-    "react-native": "^0.64.2"
+    "react": "17.0.1",
+    "react-native": "^0.64.2",
+    "@react-native-community/eslint-config": "^1.0.0",
+    "@react-native-community/bob": "^0.16.2",
+    "eslint": "^7.2.0",
+    "eslint-plugin-import": "^2.23.4",
+    "prettier": "^2.0.5"
+  },
+  "@react-native-community/bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      "commonjs",
+      "module"
+    ],
+    "files": [
+      "src/"
+    ]
   }
 }

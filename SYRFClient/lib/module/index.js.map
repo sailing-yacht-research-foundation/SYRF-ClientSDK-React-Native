@@ -1,0 +1,1 @@
+{"version":3,"sources":["index.js"],"names":["startLocationUpdates","stopLocationUpdates"],"mappings":"AACA,SAAQA,oBAAR,EAA8BC,mBAA9B,QAAwD,gBAAxD","sourcesContent":["\nexport {startLocationUpdates, stopLocationUpdates} from './RNSyrfClient'\n"]}
