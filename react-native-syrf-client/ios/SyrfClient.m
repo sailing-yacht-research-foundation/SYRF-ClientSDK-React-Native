@@ -1,6 +1,7 @@
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
 
-@interface RCT_EXTERN_MODULE(SyrfClient, NSObject)
+@interface RCT_EXTERN_MODULE(SyrfClient, RCTEventEmitter)
 
 // TODO: remove
 RCT_EXTERN_METHOD(multiply:(float)a withB:(float)b
@@ -9,20 +10,18 @@ RCT_EXTERN_METHOD(multiply:(float)a withB:(float)b
 
 #pragma mark - Permissions
 
-RCT_EXTERN_METHOD(requestPermissions:(NSDictionary *)permissions
+RCT_EXTERN_METHOD(requestAuthorizationPermissions:(NSDictionary *)permissions
                  success:(RCTPromiseResolveBlock)success
                  failure:(RCTPromiseRejectBlock)failure)
 
-RCT_EXTERN_METHOD(checkPermissions:(NSDictionary *)permissions
-                 success:(RCTPromiseResolveBlock)success
+RCT_EXTERN_METHOD(checkAuthorizationPermissions:(RCTPromiseResolveBlock)success
                  failure:(RCTPromiseRejectBlock)failure)
 
 RCT_EXTERN_METHOD(requestAccuracyPermissions:(NSDictionary *)permissions
                  success:(RCTPromiseResolveBlock)success
                  failute:(RCTPromiseRejectBlock)failure)
 
-RCT_EXTERN_METHOD(checkAccuracyPermissions:(NSDictionary *)permissions
-                 success:(RCTPromiseResolveBlock)success
+RCT_EXTERN_METHOD(checkAccuracyPermissions:(RCTPromiseResolveBlock)success
                  failute:(RCTPromiseRejectBlock)failure)
 
 
@@ -31,16 +30,6 @@ RCT_EXTERN_METHOD(checkAccuracyPermissions:(NSDictionary *)permissions
 RCT_EXTERN_METHOD(configure:(NSDictionary *)options
                   success:(RCTPromiseResolveBlock)success
                   failure:(RCTPromiseRejectBlock)failure)
-
-#pragma mark - Listeners
-
-RCT_EXTERN_METHOD(addEventListener:(NSString *)event)
-
-RCT_EXTERN_METHOD(removeEventListener:(NSString *)event)
-
-RCT_EXTERN_METHOD(removeAllListeners:(RCTResponseSenderBlock)success
-                  failure:(RCTResponseSenderBlock)failure)
-
 
 #pragma mark - Monitoring
 

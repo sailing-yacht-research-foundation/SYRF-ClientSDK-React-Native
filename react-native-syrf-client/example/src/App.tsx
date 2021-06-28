@@ -7,6 +7,11 @@ import SyrfClient, {
   useEventListener,
   SYRFLocation,
   SYRFPermissionRequestConfig,
+  SYRFLocationConfigIOS,
+  SYRFLocationAuthorizationRequestIOS,
+  LocationAuthorizationStatusIOS,
+  LocationActivityTypeIOS,
+  LocationAccuracyIOS,
 } from 'react-native-syrf-client';
 import SimpleButton from './SimpleButton';
 import { timeFormat } from './Utils';
@@ -39,7 +44,28 @@ export default function App() {
       };
       SyrfClient.configure(config);
     } else {
-      SyrfClient.configure();
+      const config: SYRFLocationConfigIOS = {
+        activity: LocationActivityTypeIOS.OtherNavigation,
+        distanceFilter: 0,
+        desiredAccuracy: LocationAccuracyIOS.BestForNavigation,
+        pauseUpdatesAutomatically: false,
+        allowIndicatorInBackground: true,
+        allowUpdatesInBackground: true,
+      };
+      SyrfClient.checkAuthorizationPermissions().then(status => {
+        if (status === LocationAuthorizationStatusIOS.AuthorizedAlways) {
+          SyrfClient.configure(config);
+        } else {
+          const permissionRequestConfig: SYRFLocationAuthorizationRequestIOS = {
+            permissions: 'always',
+          }
+          SyrfClient.requestAuthorizationPermissions(permissionRequestConfig).then(status => {
+            if (status === LocationAuthorizationStatusIOS.AuthorizedAlways || status === LocationAuthorizationStatusIOS.AuthorizedWhenInUse) {
+              SyrfClient.configure(config);
+            }
+          });
+        }
+      })
     }
 
     return () => {

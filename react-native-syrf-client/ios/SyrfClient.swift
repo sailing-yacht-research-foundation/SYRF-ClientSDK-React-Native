@@ -1,15 +1,58 @@
+import SYRFLocation
+import CoreLocation
+import React
 
+let UPDATE_LOCATION_EVENT   = "UPDATE_LOCATION_EVENT"
+let FAILED_LOCATION_EVENT    = "FAILED_LOCATION_EVENT"
 
 @objc(SyrfClient)
-class SyrfClient: NSObject {
+class SyrfClient: RCTEventEmitter {
     
     // MARK: - Stored Properties
+    
+    private var locationManager: LocationManager!
+    private var permissionsManager: PermissionsManager!
+    
+    private var callbackAuthorization: RCTPromiseResolveBlock?
+    private var callbackAccuracy: RCTPromiseResolveBlock?
+    
+    private var hasListeners: Bool = false
     
     // MARK: - Lifecycle Methods
     
     override init() {
+        self.locationManager = LocationManager()
+        self.permissionsManager = PermissionsManager()
+        
         super.init()
         
+        self.locationManager.delegate = self
+        self.permissionsManager.delegate = self
+    }
+    
+    // MARK: - Event Emitter Methods
+    
+    override func startObserving() {
+        hasListeners = true
+    }
+    
+    override func stopObserving() {
+        hasListeners = false
+    }
+    
+    @objc
+    func sendEvent(eventName: String, data: [String: Any]) {
+        if hasListeners {
+            self.sendEvent(withName: eventName, body: ["name": eventName]);
+        }
+    }
+    
+    @objc
+    override func supportedEvents() -> [String]! {
+        return [
+            UPDATE_LOCATION_EVENT,
+            FAILED_LOCATION_EVENT
+        ];
     }
 
     // MARK: - Exported Methods
@@ -19,54 +62,71 @@ class SyrfClient: NSObject {
         resolve(a*b)
     }
     
-    @objc(requestPermissions:success:failure:)
-    func requestPermission(permissions: [String: Any], success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
-        // TODO: handling
-        success("request permissions")
+    @objc(requestAuthorizationPermissions:success:failure:)
+    func requestAuthorizationPermission(dictionary: [String: Any], success: @escaping RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        if let permissions = dictionary["permissions"] as? String {
+            let authorizationLevel: PermissionsType = permissions.lowercased() == "always" ? .always : .whenInUse
+            self.permissionsManager.requestAuthorization(authorizationLevel)
+            self.callbackAuthorization = success
+        } else {
+            failure("0", "Invalid parameters", nil)
+        }
+        
     }
     
-    @objc(checkPermissions:success:failure:)
-    func checkPermissions(permissions: [String: Any], success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
-        // TODO: handling
-        success("check permissions")
+    @objc(checkAuthorizationPermissions:failure:)
+    func checkAuthorizationPermissions(success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        let status = self.permissionsManager.checkAuthorization()
+        success(self.getAuthorizationStatus(status))
     }
     
     @objc(requestAccuracyPermissions:success:failure:)
-    func requestAccuracyPermissions(permissions: [String: Any], success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
-        // TODO: handling
-        success("request accuracy")
+    func requestAccuracyPermissions(dictionary: [String: Any], success: @escaping RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        if let purpose = dictionary["purpose"] as? String {
+            self.permissionsManager.requestAccuracy(purpose)
+            self.callbackAccuracy = success
+        } else {
+            failure("0", "Invalid parameters", nil)
+        }
     }
     
-    @objc(checkAccuracyPermissions:success:failure:)
-    func checkAccuracyPermissions(permissions: [String: Any], success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
-        // TODO: handling
-        success("check accuracy")
+    @objc(checkAccuracyPermissions:failure:)
+    func checkAccuracyPermissions(success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        let status = self.permissionsManager.checkAccuracy()
+        success(self.getAccuracyStatus(status))
     }
     
     @objc(configure:success:failure:)
     func configure(configuration: [String: Any], success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        let options = LocationManagerConfig()
         
-    }
-    
-    @objc(addEventListener:)
-    func addEventListener(event: String) {
+        guard let activityType = configuration["activity"] as? String,
+              let distanceFilter = configuration["distanceFilter"] as? Double,
+              let desiredAccuracy = configuration["desiredAccuracy"] as? String else {
+            failure("0", "Invalid parameters", nil)
+            return
+        }
         
-    }
-    
-    @objc(removeListener:)
-    func removeEventListener(event: String) {
+        options.activityType = self.getActivityType(activity: activityType)
+        options.distanceFilter = self.getDistanceFilter(distance: distanceFilter)
+        options.desiredAccuracy = self.getAccuracyFilter(accuracy: desiredAccuracy)
+        if let pauseUpdatesAutomatically = configuration["pauseUpdatesAutomatically"] as? Bool {
+            options.pauseUpdatesAutomatically = pauseUpdatesAutomatically
+        }
+        if let allowIndicatorInBackground = configuration["allowIndicatorInBackground"] as? Bool {
+            options.allowIndicatorInBackground = allowIndicatorInBackground
+        }
+        if let allowUpdatesInBackground = configuration["allowUpdatesInBackground"] as? Bool {
+            options.allowUpdatesInBackground = allowUpdatesInBackground
+        }
         
-    }
-    
-    @objc(removeAllListeners:failure:)
-    func removeAllListeners(success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
-        
+        self.locationManager.configure(options)
+        success(true)
     }
     
     @objc(startLocationUpdates)
     func startLocationUpdates() {
-        //TODO: handling
-        print("start location updates")
+        self.locationManager.startLocationUpdates()
     }
     
     @objc(startHeadingUpdates)
@@ -76,8 +136,7 @@ class SyrfClient: NSObject {
     
     @objc(stopLocationUpdates)
     func stopLocationUpdates() {
-        //TODO: handling
-        print("stop location updates")
+        self.locationManager.stopLocationUpdates()
     }
     
     @objc(stopHeadingUpdates)
@@ -85,6 +144,116 @@ class SyrfClient: NSObject {
         
     }
     
+}
+
+// MARK: - Extension for LocationManager Delegate
+extension SyrfClient: LocationDelegate {
+    
+    func locationFailed(_ error: Error) {
+        self.sendEvent(eventName: FAILED_LOCATION_EVENT, data: ["error": error.localizedDescription])
+    }
+    
+    func locationUpdated(_ location: SYRFLocation) {
+        print("location updated: \(location)")
+        self.sendEvent(eventName: UPDATE_LOCATION_EVENT, data: self.getLocationDictionary(location))
+    }
+    
+    func currentLocationUpdated(_ location: SYRFLocation) {
+        print("current location updated: \(location) ")
+        self.sendEvent(eventName: UPDATE_LOCATION_EVENT, data: self.getLocationDictionary(location))
+    }
+}
+
+// MARK: - Extension for PermissionsManager Delegate
+extension SyrfClient: PermissionsDelegate {
+    
+    func authorizationUpdated(_ status: PermissionsAuthorization) {
+        if let callback = self.callbackAuthorization {
+            callback(self.getAuthorizationStatus(status))
+            self.callbackAuthorization = nil
+        }
+    }
+    
+    func accuracyUpdated(_ status: PermissionsAccuracy) {
+        if let callback = self.callbackAccuracy {
+            callback(self.getAccuracyStatus(status))
+            self.callbackAccuracy = nil
+        }
+    }
+}
+
+// MARK: - Extension for RN Module
+extension SyrfClient {
+    
+    func getAuthorizationStatus(_ status: PermissionsAuthorization) -> String {
+        switch status {
+            case .notAvailable:
+                return "notAvailable"
+            case .notDetermined:
+                return "notDetermined"
+            case .notAuthorized:
+                return "notAuthorized"
+            case .authorizedAlways:
+                return "authorizedAlways"
+            case .authorizedWhenInUse:
+                return "authorizedWhenInUse"
+        }
+    }
+    
+    func getAccuracyStatus(_ status: PermissionsAccuracy) -> String {
+        switch status {
+            case .notAvailable:
+                return "notAvailable"
+            case .full:
+                return "full"
+            case .reduced:
+                return "reduced"
+        }
+    }
+    
+    func getActivityType(activity: String) -> CLActivityType {
+        if (activity.lowercased() == "airborne") {
+            return .airborne
+        } else if (activity.lowercased() == "othernavigation") {
+            return .otherNavigation
+        } else if (activity.lowercased() == "automotivenavigation") {
+            return .automotiveNavigation
+        } else if (activity.lowercased() == "fitness") {
+            return .fitness
+        } else {
+            return .other
+        }
+    }
+    
+    func getAccuracyFilter(accuracy: String) -> CLLocationAccuracy {
+        if (accuracy.lowercased() == "bestfornavigation") {
+            return kCLLocationAccuracyBestForNavigation
+        } else if (accuracy.lowercased() == "best") {
+            return kCLLocationAccuracyBest
+        } else if (accuracy.lowercased() == "nearesttenmeters") {
+            return kCLLocationAccuracyNearestTenMeters
+        } else if (accuracy.lowercased() == "hundredmeters") {
+            return kCLLocationAccuracyHundredMeters
+        } else if (accuracy.lowercased() == "threekilometers") {
+            return kCLLocationAccuracyThreeKilometers
+        } else {
+            return kCLLocationAccuracyKilometer
+        }
+    }
+    
+    func getDistanceFilter(distance: Double) -> Double {
+        return distance == 0 ? kCLDistanceFilterNone : distance
+    }
+    
+    func getLocationDictionary(_ location: SYRFLocation) -> [String: Any] {
+        var dictionary = [String: Any]()
+        
+        dictionary["lat"] = location.coordinate.latitude
+        dictionary["lon"] = location.coordinate.longitude
+        dictionary["time"] = location.timestamp
+        
+        return dictionary
+    }
 }
 
 
