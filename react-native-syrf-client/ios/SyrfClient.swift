@@ -30,6 +30,18 @@ class SyrfClient: RCTEventEmitter {
         self.permissionsManager.delegate = self
     }
     
+    @objc
+    override static func requiresMainQueueSetup() -> Bool {
+        return true
+    }
+    
+    override func constantsToExport() -> [AnyHashable : Any]! {
+        return [
+            UPDATE_LOCATION_EVENT: UPDATE_LOCATION_EVENT,
+            FAILED_LOCATION_EVENT: FAILED_LOCATION_EVENT
+        ];
+    }
+    
     // MARK: - Event Emitter Methods
     
     override func startObserving() {
@@ -43,7 +55,7 @@ class SyrfClient: RCTEventEmitter {
     @objc
     func sendEvent(eventName: String, data: [String: Any]) {
         if hasListeners {
-            self.sendEvent(withName: eventName, body: ["name": eventName]);
+            self.sendEvent(withName: eventName, body: data);
         }
     }
     

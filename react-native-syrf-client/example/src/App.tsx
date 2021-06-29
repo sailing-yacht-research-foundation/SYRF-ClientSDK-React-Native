@@ -4,6 +4,7 @@ import SyrfClient, {
   SYRFLocationConfigAndroid,
   LocationAccuracyPriority,
   UPDATE_LOCATION_EVENT,
+  FAILED_LOCATION_EVENT,
   useEventListener,
   SYRFLocation,
   SYRFPermissionRequestConfig,
@@ -27,6 +28,15 @@ export default function App() {
       (prev) => `${prev}\n${time} - (${location.lat}, ${location.lon})`
     );
   });
+
+  if (Platform.OS === 'ios') {
+    useEventListener(FAILED_LOCATION_EVENT, (error: string) => {
+      console.log(error);
+      setResult(
+        (prev) => `${prev}\nError - error)`
+      );
+    });
+  }
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -53,13 +63,19 @@ export default function App() {
         allowUpdatesInBackground: true,
       };
       SyrfClient.checkAuthorizationPermissions().then(status => {
-        if (status === LocationAuthorizationStatusIOS.AuthorizedAlways) {
+        setResult(
+          (prev) => `${prev}\nAuthorization location status: ${status}`
+        );
+        if (status === LocationAuthorizationStatusIOS.AuthorizedAlways || status === LocationAuthorizationStatusIOS.AuthorizedWhenInUse) {
           SyrfClient.configure(config);
         } else {
           const permissionRequestConfig: SYRFLocationAuthorizationRequestIOS = {
             permissions: 'always',
           }
           SyrfClient.requestAuthorizationPermissions(permissionRequestConfig).then(status => {
+            setResult(
+              (prev) => `${prev}\nAuthorization location request status: ${status}`
+            );  
             if (status === LocationAuthorizationStatusIOS.AuthorizedAlways || status === LocationAuthorizationStatusIOS.AuthorizedWhenInUse) {
               SyrfClient.configure(config);
             }

@@ -1,7 +1,7 @@
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 
-@interface RCT_EXTERN_MODULE(SyrfClient, RCTEventEmitter)
+@interface RCT_EXTERN_MODULE(SyrfClient, RCTEventEmitter<RCTBridgeModule>)
 
 // TODO: remove
 RCT_EXTERN_METHOD(multiply:(float)a withB:(float)b

@@ -24,7 +24,7 @@ type SyrfClientType = {
   stopHeadingUpdates(): void;
 };
 
-export const { UPDATE_LOCATION_EVENT } = SyrfClient.getConstants();
+export const { UPDATE_LOCATION_EVENT, FAILED_LOCATION_EVENT } = SyrfClient.getConstants();
 
 export default SyrfClient as SyrfClientType;
 
