@@ -1,5 +1,7 @@
 package com.reactnativesyrfclient
 
+import android.Manifest
+import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -7,12 +9,15 @@ import android.content.IntentFilter
 import android.location.Location
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.facebook.react.bridge.*
+import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
 import com.syrf.location.configs.SYRFLocationConfig
 import com.syrf.location.configs.SYRFPermissionRequestConfig
 import com.syrf.location.interfaces.SYRFLocation
+import com.syrf.location.permissions.PermissionsManager
 import com.syrf.location.utils.Constants
 import com.syrf.location.utils.Constants.EXTRA_LOCATION
+import com.syrf.location.utils.MissingLocationException
 import com.syrf.time.configs.SYRFTimeConfig
 import com.syrf.time.interfaces.SYRFTime
 import java.util.*
@@ -33,9 +38,18 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     const val LOCATION_LAT = "lat"
     const val LOCATION_LON = "lon"
     const val LOCATION_TIME = "time"
+
+    const val REQUEST_PERMISSION_CODE = 1
   }
 
   private val locationBroadcastReceiver = LocationBroadcastReceiver()
+  private var permissionRequestConfig: SYRFPermissionRequestConfig? = null
+
+  private var waitingForLocationPermission = false
+  private val activity: Activity by lazy { currentActivity as Activity }
+  private val broadcastManager: LocalBroadcastManager by lazy {
+    LocalBroadcastManager.getInstance(activity)
+  }
 
   override fun getName(): String {
     return "SyrfClient"
@@ -47,24 +61,28 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     return constants
   }
 
-  // Todo: update code for using [PermissionAwareActivity].requestPermissions
   override fun onRequestPermissionsResult(
     requestCode: Int,
     permissions: Array<out String>,
     grantResults: IntArray
   ): Boolean {
-    currentActivity?.let { activity ->
-      SYRFLocation.onRequestPermissionsResult(requestCode, permissions, grantResults, activity)
-    }
+    PermissionsManager(activity).handleResults(
+      permissions,
+      successCallback = {
+        if (waitingForLocationPermission) {
+          SYRFLocation.subscribeToLocationUpdates(activity)
+        }
+        waitingForLocationPermission = false
+      },
+      exceptionCallback = {
+        waitingForLocationPermission = false
+      })
+
     return true
   }
 
   @ReactMethod
   fun configure(params: ReadableMap, promise: Promise) {
-    val activity = currentActivity ?: run {
-      promise.resolve(false)
-      return
-    }
 
     val builder = SYRFLocationConfig.Builder()
     getLongOrNull(params, KEY_UPDATE_INTERVAL)?.let {
@@ -89,8 +107,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
         permissionConfigBuilder.cancelButton(it)
       }
 
-      val permissionRequestConfig = permissionConfigBuilder.set(activity)
-      builder.permissionRequestConfig(permissionRequestConfig)
+      permissionRequestConfig = permissionConfigBuilder.set(activity)
     }
 
     SYRFTime.configure(SYRFTimeConfig.Builder().set(), activity)
@@ -100,24 +117,43 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun startLocationUpdates() {
-    val activity = currentActivity ?: return
+    SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
+      if (error != null) {
+        if (error is MissingLocationException) {
+          waitingForLocationPermission = true
+          requestLocationPermission()
+        }
+        return@subscribeToLocationUpdates
+      }
+    }
 
-    LocalBroadcastManager.getInstance(activity).registerReceiver(
+    broadcastManager.registerReceiver(
       locationBroadcastReceiver,
       IntentFilter(Constants.ACTION_LOCATION_BROADCAST)
     )
-
-    SYRFLocation.subscribeToLocationUpdates(activity)
   }
 
   @ReactMethod
   fun stopLocationUpdates() {
-    val activity = currentActivity ?: return
-
     SYRFLocation.unsubscribeToLocationUpdates()
+    broadcastManager.unregisterReceiver(locationBroadcastReceiver)
+  }
 
-    LocalBroadcastManager.getInstance(activity).unregisterReceiver(
-      locationBroadcastReceiver
+  private fun requestLocationPermission() {
+    val config = permissionRequestConfig ?: SYRFPermissionRequestConfig.getDefault(activity)
+    PermissionsManager(activity).showPermissionReasonAndRequest(
+      config,
+      onPositionClick = {
+        (activity as? PermissionAwareActivity)?.requestPermissions(
+          arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+          ),
+          REQUEST_PERMISSION_CODE,
+          this
+        )
+      },
+      onNegativeClick = {}
     )
   }
 
