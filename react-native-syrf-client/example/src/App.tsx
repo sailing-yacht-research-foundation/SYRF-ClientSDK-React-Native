@@ -4,9 +4,15 @@ import SyrfClient, {
   SYRFLocationConfigAndroid,
   LocationAccuracyPriority,
   UPDATE_LOCATION_EVENT,
+  FAILED_LOCATION_EVENT,
   useEventListener,
   SYRFLocation,
   SYRFPermissionRequestConfig,
+  SYRFLocationConfigIOS,
+  SYRFLocationAuthorizationRequestIOS,
+  LocationAuthorizationStatusIOS,
+  LocationActivityTypeIOS,
+  LocationAccuracyIOS,
 } from 'react-native-syrf-client';
 import SimpleButton from './SimpleButton';
 import { timeFormat } from './Utils';
@@ -22,6 +28,15 @@ export default function App() {
       (prev) => `${prev}\n${time} - (${location.lat}, ${location.lon})`
     );
   });
+
+  if (Platform.OS === 'ios') {
+    useEventListener(FAILED_LOCATION_EVENT, (error: string) => {
+      console.log(error);
+      setResult(
+        (prev) => `${prev}\nError - error)`
+      );
+    });
+  }
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -39,7 +54,34 @@ export default function App() {
       };
       SyrfClient.configure(config);
     } else {
-      SyrfClient.configure();
+      const config: SYRFLocationConfigIOS = {
+        activity: LocationActivityTypeIOS.OtherNavigation,
+        distanceFilter: 0,
+        desiredAccuracy: LocationAccuracyIOS.BestForNavigation,
+        pauseUpdatesAutomatically: false,
+        allowIndicatorInBackground: true,
+        allowUpdatesInBackground: true,
+      };
+      SyrfClient.checkAuthorizationPermissions().then(status => {
+        setResult(
+          (prev) => `${prev}\nAuthorization location status: ${status}`
+        );
+        if (status === LocationAuthorizationStatusIOS.AuthorizedAlways || status === LocationAuthorizationStatusIOS.AuthorizedWhenInUse) {
+          SyrfClient.configure(config);
+        } else {
+          const permissionRequestConfig: SYRFLocationAuthorizationRequestIOS = {
+            permissions: 'always',
+          }
+          SyrfClient.requestAuthorizationPermissions(permissionRequestConfig).then(status => {
+            setResult(
+              (prev) => `${prev}\nAuthorization location request status: ${status}`
+            );  
+            if (status === LocationAuthorizationStatusIOS.AuthorizedAlways || status === LocationAuthorizationStatusIOS.AuthorizedWhenInUse) {
+              SyrfClient.configure(config);
+            }
+          });
+        }
+      })
     }
 
     return () => {
