@@ -226,31 +226,37 @@ extension SyrfClient {
     func getActivityType(activity: String) -> CLActivityType {
         if (activity.lowercased() == "airborne") {
             return .airborne
-        } else if (activity.lowercased() == "othernavigation") {
-            return .otherNavigation
-        } else if (activity.lowercased() == "automotivenavigation") {
-            return .automotiveNavigation
-        } else if (activity.lowercased() == "fitness") {
-            return .fitness
-        } else {
-            return .other
         }
+        if (activity.lowercased() == "othernavigation") {
+            return .otherNavigation
+        }
+        if (activity.lowercased() == "automotivenavigation") {
+            return .automotiveNavigation
+        }
+        if (activity.lowercased() == "fitness") {
+            return .fitness
+        }
+        return .other
+        
     }
     
     func getAccuracyFilter(accuracy: String) -> CLLocationAccuracy {
         if (accuracy.lowercased() == "bestfornavigation") {
             return kCLLocationAccuracyBestForNavigation
-        } else if (accuracy.lowercased() == "best") {
-            return kCLLocationAccuracyBest
-        } else if (accuracy.lowercased() == "nearesttenmeters") {
-            return kCLLocationAccuracyNearestTenMeters
-        } else if (accuracy.lowercased() == "hundredmeters") {
-            return kCLLocationAccuracyHundredMeters
-        } else if (accuracy.lowercased() == "threekilometers") {
-            return kCLLocationAccuracyThreeKilometers
-        } else {
-            return kCLLocationAccuracyKilometer
         }
+        if (accuracy.lowercased() == "best") {
+            return kCLLocationAccuracyBest
+        }
+        if (accuracy.lowercased() == "nearesttenmeters") {
+            return kCLLocationAccuracyNearestTenMeters
+        }
+        if (accuracy.lowercased() == "hundredmeters") {
+            return kCLLocationAccuracyHundredMeters
+        }
+        if (accuracy.lowercased() == "threekilometers") {
+            return kCLLocationAccuracyThreeKilometers
+        }
+        return kCLLocationAccuracyKilometer
     }
     
     func getDistanceFilter(distance: Double) -> Double {
