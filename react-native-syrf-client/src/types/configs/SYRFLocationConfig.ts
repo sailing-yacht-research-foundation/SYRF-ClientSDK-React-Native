@@ -6,33 +6,33 @@ export enum LocationAccuracyPriority {
 }
 
 export enum LocationActivityTypeIOS {
-  Other = "other",
-  AutomativeNavigation = "automotiveNavigation",
-  Fitness = "fitness",
-  OtherNavigation = "otherNavigation",
-  Airborne = "airborne",
+  Other = 'other',
+  AutomativeNavigation = 'automotiveNavigation',
+  Fitness = 'fitness',
+  OtherNavigation = 'otherNavigation',
+  Airborne = 'airborne',
 }
 
 export enum LocationAccuracyIOS {
-  BestForNavigation = "bestForNavigation",
-  Best = "best",
-  NearestTenMeters = "nearestTenMeters",
-  HundredMeters = "hundredMeters",
-  ThreeKilometers = "threeKilometers",
+  BestForNavigation = 'bestForNavigation',
+  Best = 'best',
+  NearestTenMeters = 'nearestTenMeters',
+  HundredMeters = 'hundredMeters',
+  ThreeKilometers = 'threeKilometers',
 }
 
 export enum LocationAuthorizationStatusIOS {
-  NotAvailable = "notAvailable",
-  NotDetermined = "notDetermined",
-  NotAuthorized = "notAuthorized",
-  AuthorizedAlways = "authorizedAlways",
-  AuthorizedWhenInUse = "authorizedWhenInUse",
+  NotAvailable = 'notAvailable',
+  NotDetermined = 'notDetermined',
+  NotAuthorized = 'notAuthorized',
+  AuthorizedAlways = 'authorizedAlways',
+  AuthorizedWhenInUse = 'authorizedWhenInUse',
 }
 
 export enum LocationAccuracyStatusIOS {
-  NotAvailable = "notAvailable",
-  Full = "full",
-  Reduced = "reduced",
+  NotAvailable = 'notAvailable',
+  Full = 'full',
+  Reduced = 'reduced',
 }
 
 /**
@@ -89,7 +89,7 @@ export interface SYRFLocationConfigIOS extends SYRFLocationConfig {
  * @property permissions The level of permissions requested
  */
 export interface SYRFLocationAuthorizationRequestIOS {
-  permissions: "whenInUse" | "always";
+  permissions: 'whenInUse' | 'always';
 }
 
 /**
