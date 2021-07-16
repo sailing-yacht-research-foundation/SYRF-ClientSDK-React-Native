@@ -237,7 +237,6 @@ extension SyrfClient {
             return .fitness
         }
         return .other
-        
     }
     
     func getAccuracyFilter(accuracy: String) -> CLLocationAccuracy {

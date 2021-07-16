@@ -12,6 +12,7 @@ Pod::Spec.new do |s|
 
   s.platforms    = { :ios => "13.0" }
   s.source       = { :git => "https://github.com/sailing-yacht-research-foundation/client-sdk-react-native.git", :tag => "#{s.version}" }
+  s.swift_version = 5.0
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
 
