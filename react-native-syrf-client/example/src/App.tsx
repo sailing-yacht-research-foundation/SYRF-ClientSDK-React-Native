@@ -24,9 +24,9 @@ export default function App() {
     const format = 'dd/MM/yyyy, hh:mm:ss';
     const time = timeFormat(location.timestamp, format);
     console.log(location);
-    setResult(
-      (prev) => `${prev}\n${time} - (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`
-    );
+    setResult((prev) => {
+      return `${prev}\n${time} - (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`;
+    });
   });
 
   useEventListener(FAILED_LOCATION_EVENT, (error: string) => {

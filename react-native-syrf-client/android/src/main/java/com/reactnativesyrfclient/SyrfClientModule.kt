@@ -13,6 +13,7 @@ import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
 import com.syrf.location.configs.SYRFLocationConfig
 import com.syrf.location.configs.SYRFPermissionRequestConfig
+import com.syrf.location.data.SYRFLocationData
 import com.syrf.location.interfaces.SYRFLocation
 import com.syrf.location.permissions.PermissionsManager
 import com.syrf.location.utils.Constants
@@ -35,9 +36,12 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     const val KEY_PERMISSION_REQUEST_CANCEL_BTN = "cancelButton"
 
     const val UPDATE_LOCATION_EVENT = "UPDATE_LOCATION_EVENT"
-    const val LOCATION_LAT = "lat"
-    const val LOCATION_LON = "lon"
-    const val LOCATION_TIME = "time"
+    const val LOCATION_LAT = "latitude"
+    const val LOCATION_LON = "longitude"
+    const val LOCATION_TIME = "timestamp"
+    const val LOCATION_ACCURACY = "accuracy"
+    const val LOCATION_SPEED = "speed"
+    const val LOCATION_HEADING = "heading"
 
     const val REQUEST_PERMISSION_CODE = 1
   }
@@ -160,13 +164,16 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   private inner class LocationBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-      val location = intent.getParcelableExtra<Location>(EXTRA_LOCATION)
+      val location = intent.getParcelableExtra<SYRFLocationData>(EXTRA_LOCATION)
 
       if (location != null) {
         val params = Arguments.createMap()
         params.putDouble(LOCATION_LAT, location.latitude)
         params.putDouble(LOCATION_LON, location.longitude)
-        params.putDouble(LOCATION_TIME, SYRFTime.getCurrentTimeMS().toDouble())
+        params.putDouble(LOCATION_TIME, location.timestamp.toDouble())
+        params.putDouble(LOCATION_ACCURACY, location.horizontalAccuracy.toDouble())
+        params.putDouble(LOCATION_SPEED, location.speed.toDouble())
+        params.putDouble(LOCATION_HEADING, location.trueHeading.toDouble())
         sendEvent(reactApplicationContext, UPDATE_LOCATION_EVENT, params)
       }
     }

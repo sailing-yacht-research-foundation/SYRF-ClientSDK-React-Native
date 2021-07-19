@@ -8,5 +8,4 @@ export interface SYRFLocation {
   speed: number;
   heading: number;
   timestamp: number;
-
 }
