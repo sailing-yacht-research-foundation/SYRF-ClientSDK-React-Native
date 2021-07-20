@@ -187,7 +187,7 @@ PODS:
   - React-jsinspector (0.63.4)
   - react-native-syrf-client (0.1.7):
     - React-Core
-    - SYRFLocation (~> 0.0.8)
+    - SYRFLocation (~> 0.0.9)
   - React-RCTActionSheet (0.63.4):
     - React-Core/RCTActionSheetHeaders (= 0.63.4)
   - React-RCTAnimation (0.63.4):
@@ -248,7 +248,7 @@ PODS:
     - React-Core (= 0.63.4)
     - React-cxxreact (= 0.63.4)
     - React-jsi (= 0.63.4)
-  - SYRFLocation (0.0.8)
+  - SYRFLocation (0.0.9)
   - Yoga (1.14.0)
 
 DEPENDENCIES:
@@ -360,7 +360,7 @@ SPEC CHECKSUMS:
   React-jsi: a0418934cf48f25b485631deb27c64dc40fb4c31
   React-jsiexecutor: 93bd528844ad21dc07aab1c67cb10abae6df6949
   React-jsinspector: 58aef7155bc9a9683f5b60b35eccea8722a4f53a
-  react-native-syrf-client: c6951f232d106b19fd905457da91f5099f70f078
+  react-native-syrf-client: ba599c69b462c5baa440e913342bb2bd73787c4b
   React-RCTActionSheet: 89a0ca9f4a06c1f93c26067af074ccdce0f40336
   React-RCTAnimation: 1bde3ecc0c104c55df246eda516e0deb03c4e49b
   React-RCTBlob: a97d378b527740cc667e03ebfa183a75231ab0f0
@@ -371,7 +371,7 @@ SPEC CHECKSUMS:
   React-RCTText: 5c51df3f08cb9dedc6e790161195d12bac06101c
   React-RCTVibration: ae4f914cfe8de7d4de95ae1ea6cc8f6315d73d9d
   ReactCommon: 73d79c7039f473b76db6ff7c6b159c478acbbb3b
-  SYRFLocation: f00483f9f650ac21d78b14952de97a0c947280ef
+  SYRFLocation: 92fa3df53bc6349bc5b1ce20b882e845e7bd944a
   Yoga: 4bd86afe9883422a7c4028c00e34790f560923d6
 
 PODFILE CHECKSUM: 037b8092a5952c987238c1aa14859e9743632485

@@ -270,7 +270,7 @@ extension SyrfClient {
         dictionary["accuracy"] = location.horizontalAccuracy
         dictionary["speed"] = location.speed
         dictionary["heading"] = location.courseHeading
-        dictionary["timestamp"] = location.timestamp
+        dictionary["timestamp"] = floor(location.timestamp.timeIntervalSince1970 * 1000)
         
         return dictionary
     }
