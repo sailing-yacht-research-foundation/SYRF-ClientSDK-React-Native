@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, Text, Platform } from 'react-native';
 import SyrfClient, {
   SYRFLocationConfigAndroid,
@@ -10,91 +10,102 @@ import SyrfClient, {
   SYRFPermissionRequestConfig,
   SYRFLocationConfigIOS,
   SYRFLocationAuthorizationRequestIOS,
-  LocationAuthorizationStatusIOS,
   LocationActivityTypeIOS,
   LocationAccuracyIOS,
 } from 'react-native-syrf-client';
 import SimpleButton from './SimpleButton';
-import { timeFormat } from './Utils';
+import { hasPermissionIOS, timeFormat } from './Utils';
 
 export default function App() {
   const [result, setResult] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   useEventListener(UPDATE_LOCATION_EVENT, (location: SYRFLocation) => {
     const format = 'dd/MM/yyyy, hh:mm:ss';
     const time = timeFormat(location.timestamp, format);
     console.log(location);
-    setResult(
-      (prev) => `${prev}\n${time} - (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`
-    );
+    setResult((prev) => {
+      return `${prev}\n${time} - (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`;
+    });
   });
 
-  if (Platform.OS === 'ios') {
-    useEventListener(FAILED_LOCATION_EVENT, (error: string) => {
-      console.log(error);
-      setResult(
-        (prev) => `${prev}\nError - error)`
-      );
-    });
-  }
+  useEventListener(FAILED_LOCATION_EVENT, (error: string) => {
+    console.log(error);
+    setResult((prev) => `${prev}\nError - error)`);
+  });
+
+  const configureSyrfLocation = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      configureAndroid();
+    } else {
+      configureIOS();
+    }
+  }, []);
+
+  const configureAndroid = () => {
+    const permissionRequestConfig: SYRFPermissionRequestConfig = {
+      title: 'Permission required',
+      message: 'Please grant location permission for continue...',
+      okButton: 'OK',
+      cancelButton: 'Cancel',
+    };
+
+    const config: SYRFLocationConfigAndroid = {
+      updateInterval: 2,
+      maximumLocationAccuracy: LocationAccuracyPriority.HighAccuracy,
+      permissionRequestConfig: permissionRequestConfig,
+    };
+    SyrfClient.configure(config);
+  };
+
+  const configureIOS = async () => {
+    const config: SYRFLocationConfigIOS = {
+      activity: LocationActivityTypeIOS.OtherNavigation,
+      distanceFilter: 0,
+      desiredAccuracy: LocationAccuracyIOS.BestForNavigation,
+      pauseUpdatesAutomatically: false,
+      allowIndicatorInBackground: true,
+      allowUpdatesInBackground: true,
+    };
+
+    // Check for permission status
+    const permissionStatus = await SyrfClient.checkAuthorizationPermissions();
+    if (hasPermissionIOS(permissionStatus)) {
+      SyrfClient.configure(config);
+      return;
+    }
+
+    // Request permission
+    const permissionRequestConfig: SYRFLocationAuthorizationRequestIOS = {
+      permissions: 'always',
+    };
+    const requestPermissionStatus =
+      await SyrfClient.requestAuthorizationPermissions(permissionRequestConfig);
+    setResult(
+      (prev) =>
+        `${prev}\nAuthorization location request status: ${requestPermissionStatus}`
+    );
+    if (hasPermissionIOS(requestPermissionStatus)) {
+      SyrfClient.configure(config);
+    }
+  };
 
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      const permissionRequestConfig: SYRFPermissionRequestConfig = {
-        title: 'Permission required',
-        message: 'Please grant location permission for continue...',
-        okButton: 'OK',
-        cancelButton: 'Cancel',
-      };
-
-      const config: SYRFLocationConfigAndroid = {
-        updateInterval: 2,
-        maximumLocationAccuracy: LocationAccuracyPriority.HighAccuracy,
-        permissionRequestConfig: permissionRequestConfig,
-      };
-      SyrfClient.configure(config);
-    } else {
-      const config: SYRFLocationConfigIOS = {
-        activity: LocationActivityTypeIOS.OtherNavigation,
-        distanceFilter: 0,
-        desiredAccuracy: LocationAccuracyIOS.BestForNavigation,
-        pauseUpdatesAutomatically: false,
-        allowIndicatorInBackground: true,
-        allowUpdatesInBackground: true,
-      };
-      SyrfClient.checkAuthorizationPermissions().then(status => {
-        setResult(
-          (prev) => `${prev}\nAuthorization location status: ${status}`
-        );
-        if (status === LocationAuthorizationStatusIOS.AuthorizedAlways || status === LocationAuthorizationStatusIOS.AuthorizedWhenInUse) {
-          SyrfClient.configure(config);
-        } else {
-          const permissionRequestConfig: SYRFLocationAuthorizationRequestIOS = {
-            permissions: 'always',
-          }
-          SyrfClient.requestAuthorizationPermissions(permissionRequestConfig).then(status => {
-            setResult(
-              (prev) => `${prev}\nAuthorization location request status: ${status}`
-            );  
-            if (status === LocationAuthorizationStatusIOS.AuthorizedAlways || status === LocationAuthorizationStatusIOS.AuthorizedWhenInUse) {
-              SyrfClient.configure(config);
-            }
-          });
-        }
-      })
-    }
+    configureSyrfLocation();
 
     return () => {
       SyrfClient.stopLocationUpdates();
     };
-  }, []);
+  }, [configureSyrfLocation]);
 
-  const startUpdate = () => {
-    SyrfClient.startLocationUpdates();
-  };
+  const toggleUpdate = () => {
+    if (updating) {
+      SyrfClient.stopLocationUpdates();
+    } else {
+      SyrfClient.startLocationUpdates();
+    }
 
-  const stopUpdate = () => {
-    SyrfClient.stopLocationUpdates();
+    setUpdating((prev) => !prev);
   };
 
   return (
@@ -104,15 +115,9 @@ export default function App() {
       </View>
       <SimpleButton
         style={styles.button}
-        text="Start Location Update"
+        text={updating ? 'Stop Location Update' : 'Start Location Update'}
         textStyle={styles.buttonText}
-        onPress={startUpdate}
-      />
-      <SimpleButton
-        style={styles.button}
-        text="Stop Location Update"
-        textStyle={styles.buttonText}
-        onPress={stopUpdate}
+        onPress={toggleUpdate}
       />
     </View>
   );

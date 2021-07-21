@@ -1,3 +1,5 @@
+import { LocationAuthorizationStatusIOS } from 'react-native-syrf-client';
+
 export const timeFormat = (timeInMilis: number, format: string) => {
   const date = new Date(timeInMilis);
   const yyyy = date.getFullYear().toString();
@@ -13,4 +15,11 @@ export const timeFormat = (timeInMilis: number, format: string) => {
   const ss = date.getSeconds().toString();
   format = format.replace(/ss/g, ss[1] ? ss : '0' + ss[0]);
   return format;
+};
+
+export const hasPermissionIOS = (status: LocationAuthorizationStatusIOS) => {
+  return (
+    status === LocationAuthorizationStatusIOS.AuthorizedAlways ||
+    status === LocationAuthorizationStatusIOS.AuthorizedWhenInUse
+  );
 };
