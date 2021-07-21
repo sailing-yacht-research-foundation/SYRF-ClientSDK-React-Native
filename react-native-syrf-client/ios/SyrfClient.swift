@@ -265,9 +265,12 @@ extension SyrfClient {
     func getLocationDictionary(_ location: SYRFLocation) -> [String: Any] {
         var dictionary = [String: Any]()
         
-        dictionary["lat"] = location.coordinate.latitude
-        dictionary["lon"] = location.coordinate.longitude
-        dictionary["time"] = location.timestamp
+        dictionary["latitude"] = location.coordinate.latitude
+        dictionary["longitude"] = location.coordinate.longitude
+        dictionary["accuracy"] = location.horizontalAccuracy
+        dictionary["speed"] = location.speed
+        dictionary["heading"] = location.courseHeading
+        dictionary["timestamp"] = floor(location.timestamp.timeIntervalSince1970 * 1000)
         
         return dictionary
     }

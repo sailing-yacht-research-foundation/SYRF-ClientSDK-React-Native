@@ -2,7 +2,11 @@
  * Represents a location data.
  */
 export interface SYRFLocation {
-  lat: number;
-  lon: number;
-  time: number;
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  speed: number;
+  heading: number;
+  timestamp: number;
+
 }

@@ -22,10 +22,10 @@ export default function App() {
 
   useEventListener(UPDATE_LOCATION_EVENT, (location: SYRFLocation) => {
     const format = 'dd/MM/yyyy, hh:mm:ss';
-    const time = timeFormat(location.time, format);
+    const time = timeFormat(location.timestamp, format);
     console.log(location);
     setResult(
-      (prev) => `${prev}\n${time} - (${location.lat}, ${location.lon})`
+      (prev) => `${prev}\n${time} - (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`
     );
   });
 
