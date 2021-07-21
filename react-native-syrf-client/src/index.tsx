@@ -1,5 +1,5 @@
 import { NativeModules } from 'react-native';
-import type {
+import {
   SYRFLocationConfig,
   SYRFLocationAuthorizationRequestIOS,
   SYRFLocationAccuracyRequestIOS,
