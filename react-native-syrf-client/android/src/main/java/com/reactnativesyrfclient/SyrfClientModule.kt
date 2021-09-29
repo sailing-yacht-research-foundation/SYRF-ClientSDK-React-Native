@@ -36,6 +36,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     const val KEY_PERMISSION_REQUEST_CANCEL_BTN = "cancelButton"
 
     const val UPDATE_LOCATION_EVENT = "UPDATE_LOCATION_EVENT"
+    const val CURRENT_LOCATION_EVENT = "CURRENT_LOCATION_EVENT"
     const val LOCATION_LAT = "latitude"
     const val LOCATION_LON = "longitude"
     const val LOCATION_TIME = "timestamp"
@@ -62,6 +63,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   override fun getConstants(): Map<String, Any> {
     val constants: MutableMap<String, Any> = HashMap()
     constants[UPDATE_LOCATION_EVENT] = UPDATE_LOCATION_EVENT
+    constants[CURRENT_LOCATION_EVENT] = CURRENT_LOCATION_EVENT
     return constants
   }
 
@@ -138,6 +140,23 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun getCurrentLocation() {
+    SYRFLocation.getCurrentPosition(activity) { location, error ->
+      if (error != null) {
+        if (error is MissingLocationException) {
+          waitingForLocationPermission = true
+          requestLocationPermission()
+        }
+        return@getCurrentPosition
+      }
+      if (location != null) {
+        val params = locationToMap(location)
+        sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, params)
+      }
+    }
+  }
+
+  @ReactMethod
   fun stopLocationUpdates() {
     SYRFLocation.unsubscribeToLocationUpdates()
     broadcastManager.unregisterReceiver(locationBroadcastReceiver)
@@ -161,19 +180,24 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     )
   }
 
+  private  fun locationToMap(location: SYRFLocationData): WritableMap  {
+    val params = Arguments.createMap()
+    params.putDouble(LOCATION_LAT, location.latitude)
+    params.putDouble(LOCATION_LON, location.longitude)
+    params.putDouble(LOCATION_TIME, location.timestamp.toDouble())
+    params.putDouble(LOCATION_ACCURACY, location.horizontalAccuracy.toDouble())
+    params.putDouble(LOCATION_SPEED, location.speed.toDouble())
+    params.putDouble(LOCATION_HEADING, location.trueHeading.toDouble())
+    return params;
+  }
+
   private inner class LocationBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
       val location = intent.getParcelableExtra<SYRFLocationData>(EXTRA_LOCATION)
 
       if (location != null) {
-        val params = Arguments.createMap()
-        params.putDouble(LOCATION_LAT, location.latitude)
-        params.putDouble(LOCATION_LON, location.longitude)
-        params.putDouble(LOCATION_TIME, location.timestamp.toDouble())
-        params.putDouble(LOCATION_ACCURACY, location.horizontalAccuracy.toDouble())
-        params.putDouble(LOCATION_SPEED, location.speed.toDouble())
-        params.putDouble(LOCATION_HEADING, location.trueHeading.toDouble())
+        val params = locationToMap(location)
         sendEvent(reactApplicationContext, UPDATE_LOCATION_EVENT, params)
       }
     }
