@@ -13,6 +13,7 @@ type SyrfClientType = {
   configure(options?: SYRFLocationConfig): Promise<any>;
   startLocationUpdates(): void;
   stopLocationUpdates(): void;
+  getCurrentLocation(): void;
 
   // iOS only
   requestAuthorizationPermissions(
@@ -27,8 +28,11 @@ type SyrfClientType = {
   stopHeadingUpdates(): void;
 };
 
-export const { UPDATE_LOCATION_EVENT, FAILED_LOCATION_EVENT } =
-  SyrfClient.getConstants();
+export const {
+  UPDATE_LOCATION_EVENT,
+  CURRENT_LOCATION_EVENT,
+  FAILED_LOCATION_EVENT,
+} = SyrfClient.getConstants();
 
 export default SyrfClient as SyrfClientType;
 

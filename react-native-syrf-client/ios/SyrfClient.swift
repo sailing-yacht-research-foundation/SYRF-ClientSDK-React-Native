@@ -4,6 +4,7 @@ import React
 
 let UPDATE_LOCATION_EVENT   = "UPDATE_LOCATION_EVENT"
 let FAILED_LOCATION_EVENT    = "FAILED_LOCATION_EVENT"
+let CURRENT_LOCATION_EVENT = "CURRENT_LOCATION_EVENT"
 
 @objc(SyrfClient)
 class SyrfClient: RCTEventEmitter {
@@ -38,6 +39,7 @@ class SyrfClient: RCTEventEmitter {
     override func constantsToExport() -> [AnyHashable : Any]! {
         return [
             UPDATE_LOCATION_EVENT: UPDATE_LOCATION_EVENT,
+            CURRENT_LOCATION_EVENT: CURRENT_LOCATION_EVENT,
             FAILED_LOCATION_EVENT: FAILED_LOCATION_EVENT
         ];
     }
@@ -63,6 +65,7 @@ class SyrfClient: RCTEventEmitter {
     override func supportedEvents() -> [String]! {
         return [
             UPDATE_LOCATION_EVENT,
+            CURRENT_LOCATION_EVENT,
             FAILED_LOCATION_EVENT
         ];
     }
@@ -146,6 +149,11 @@ class SyrfClient: RCTEventEmitter {
         
     }
     
+    @objc(getCurrentLocation)
+    func getCurrentLocation() {
+        self.locationManager.getCurrentLocation()
+    }
+    
     @objc(stopLocationUpdates)
     func stopLocationUpdates() {
         self.locationManager.stopLocationUpdates()
@@ -166,13 +174,11 @@ extension SyrfClient: LocationDelegate {
     }
     
     func locationUpdated(_ location: SYRFLocation) {
-        print("location updated: \(location)")
         self.sendEvent(eventName: UPDATE_LOCATION_EVENT, data: self.getLocationDictionary(location))
     }
     
     func currentLocationUpdated(_ location: SYRFLocation) {
-        print("current location updated: \(location) ")
-        self.sendEvent(eventName: UPDATE_LOCATION_EVENT, data: self.getLocationDictionary(location))
+        self.sendEvent(eventName: CURRENT_LOCATION_EVENT, data: self.getLocationDictionary(location))
     }
 }
 

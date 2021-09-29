@@ -37,6 +37,8 @@ RCT_EXTERN_METHOD(startLocationUpdates)
 
 RCT_EXTERN_METHOD(startHeadingUpdates)
 
+RCT_EXTERN_METHOD(getCurrentLocation)
+
 RCT_EXTERN_METHOD(stopLocationUpdates)
 
 RCT_EXTERN_METHOD(stopHeadingUpdates)

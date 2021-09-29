@@ -4,6 +4,7 @@ import SyrfClient, {
   SYRFLocationConfigAndroid,
   LocationAccuracyPriority,
   UPDATE_LOCATION_EVENT,
+  CURRENT_LOCATION_EVENT,
   FAILED_LOCATION_EVENT,
   useEventListener,
   SYRFLocation,
@@ -25,7 +26,16 @@ export default function App() {
     const time = timeFormat(location.timestamp, format);
     console.log(location);
     setResult((prev) => {
-      return `${prev}\n${time} - (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`;
+      return `${prev}\n${time} - Update location (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`;
+    });
+  });
+
+  useEventListener(CURRENT_LOCATION_EVENT, (location: SYRFLocation) => {
+    const format = 'dd/MM/yyyy, hh:mm:ss';
+    const time = timeFormat(location.timestamp, format);
+    console.log(location);
+    setResult((prev) => {
+      return `${prev}\n${time} - Current Location (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`;
     });
   });
 
@@ -108,6 +118,10 @@ export default function App() {
     setUpdating((prev) => !prev);
   };
 
+  const toggleLocation = () => {
+    SyrfClient.getCurrentLocation();
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.textResultContainer}>
@@ -118,6 +132,12 @@ export default function App() {
         text={updating ? 'Stop Location Update' : 'Start Location Update'}
         textStyle={styles.buttonText}
         onPress={toggleUpdate}
+      />
+      <SimpleButton
+        style={styles.button}
+        text={'Get Current Location'}
+        textStyle={styles.buttonText}
+        onPress={toggleLocation}
       />
     </View>
   );
