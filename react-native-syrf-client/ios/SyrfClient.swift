@@ -2,9 +2,11 @@ import SYRFLocation
 import CoreLocation
 import React
 
-let UPDATE_LOCATION_EVENT   = "UPDATE_LOCATION_EVENT"
-let FAILED_LOCATION_EVENT    = "FAILED_LOCATION_EVENT"
-let CURRENT_LOCATION_EVENT = "CURRENT_LOCATION_EVENT"
+let UPDATE_LOCATION_EVENT       = "UPDATE_LOCATION_EVENT"
+let FAILED_LOCATION_EVENT       = "FAILED_LOCATION_EVENT"
+let CURRENT_LOCATION_EVENT      = "CURRENT_LOCATION_EVENT"
+let UPDATE_HEADING_EVENT        = "UPDATE_HEADING_EVENT"
+let FAILED_HEADING_EVENT        = "FAILED_HEADING_EVENT"
 
 @objc(SyrfClient)
 class SyrfClient: RCTEventEmitter {
@@ -12,6 +14,7 @@ class SyrfClient: RCTEventEmitter {
     // MARK: - Stored Properties
     
     private var locationManager: LocationManager!
+    private var headingManager: HeadingManager!
     private var permissionsManager: PermissionsManager!
     
     private var callbackAuthorization: RCTPromiseResolveBlock?
@@ -23,11 +26,13 @@ class SyrfClient: RCTEventEmitter {
     
     override init() {
         self.locationManager = LocationManager()
+        self.headingManager = HeadingManager()
         self.permissionsManager = PermissionsManager()
         
         super.init()
         
         self.locationManager.delegate = self
+        self.headingManager.delegate = self
         self.permissionsManager.delegate = self
     }
     
@@ -40,7 +45,9 @@ class SyrfClient: RCTEventEmitter {
         return [
             UPDATE_LOCATION_EVENT: UPDATE_LOCATION_EVENT,
             CURRENT_LOCATION_EVENT: CURRENT_LOCATION_EVENT,
-            FAILED_LOCATION_EVENT: FAILED_LOCATION_EVENT
+            FAILED_LOCATION_EVENT: FAILED_LOCATION_EVENT,
+            UPDATE_HEADING_EVENT: UPDATE_HEADING_EVENT,
+            FAILED_HEADING_EVENT: FAILED_HEADING_EVENT,
         ];
     }
     
@@ -66,7 +73,9 @@ class SyrfClient: RCTEventEmitter {
         return [
             UPDATE_LOCATION_EVENT,
             CURRENT_LOCATION_EVENT,
-            FAILED_LOCATION_EVENT
+            FAILED_LOCATION_EVENT,
+            UPDATE_HEADING_EVENT,
+            FAILED_HEADING_EVENT,
         ];
     }
 
@@ -139,6 +148,21 @@ class SyrfClient: RCTEventEmitter {
         success(true)
     }
     
+    @objc(configureHeading:success:failure:)
+    func configureHeading(configuration: [String: Any], success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        let options = HeadingManagerConfig()
+        
+        if let orientation = configuration["orientation"] as? String {
+            options.headingOrientation = self.getHeadingOrientation(orientation: orientation)
+        }
+        if let distanceFilter = configuration["distanceFilter"] as? Double {
+            options.headingFilter = self.getHeadingDistanceFilter(distance: distanceFilter)
+        }
+        
+        self.headingManager.configure(options)
+        success(true)
+    }
+    
     @objc(startLocationUpdates)
     func startLocationUpdates() {
         self.locationManager.startLocationUpdates()
@@ -146,7 +170,7 @@ class SyrfClient: RCTEventEmitter {
     
     @objc(startHeadingUpdates)
     func startHeadingUpdates() {
-        
+        self.headingManager.startHeadingUpdates()
     }
     
     @objc(getCurrentLocation)
@@ -161,7 +185,7 @@ class SyrfClient: RCTEventEmitter {
     
     @objc(stopHeadingUpdates)
     func stopHeadingUpdates() {
-        
+        self.headingManager.stopHeadingUpdates()
     }
     
 }
@@ -179,6 +203,18 @@ extension SyrfClient: LocationDelegate {
     
     func currentLocationUpdated(_ location: SYRFLocation) {
         self.sendEvent(eventName: CURRENT_LOCATION_EVENT, data: self.getLocationDictionary(location))
+    }
+}
+
+// MARK: - Extension for HeadingManager Delegate
+extension SyrfClient: HeadingDelegate {
+    
+    func headingUpdated(_ heading: SYRFHeading) {
+        self.sendEvent(eventName: UPDATE_HEADING_EVENT, data: self.getHeadingDictionary(heading))
+    }
+    
+    func headingFailed(_ error: Error) {
+        self.sendEvent(eventName: FAILED_HEADING_EVENT, data: ["error": error.localizedDescription])
     }
 }
 
@@ -268,6 +304,32 @@ extension SyrfClient {
         return distance == 0 ? kCLDistanceFilterNone : distance
     }
     
+    func getHeadingDistanceFilter(distance: Double) -> Double {
+        return distance == 0 ? kCLHeadingFilterNone : distance
+    }
+    
+    func getHeadingOrientation(orientation: String) -> CLDeviceOrientation {
+        if (orientation.lowercased() == "portrait") {
+            return .portrait
+        }
+        if (orientation.lowercased() == "portraitupsidedown") {
+            return .portraitUpsideDown
+        }
+        if (orientation.lowercased() == "landscapeleft") {
+            return .landscapeLeft
+        }
+        if (orientation.lowercased() == "landscaperight") {
+            return .landscapeRight
+        }
+        if (orientation.lowercased() == "faceup") {
+            return .faceUp
+        }
+        if (orientation.lowercased() == "facedown") {
+            return .faceDown
+        }
+        return .portrait
+    }
+    
     func getLocationDictionary(_ location: SYRFLocation) -> [String: Any] {
         var dictionary = [String: Any]()
         
@@ -277,6 +339,22 @@ extension SyrfClient {
         dictionary["speed"] = location.speed
         dictionary["heading"] = location.courseHeading
         dictionary["timestamp"] = floor(location.timestamp.timeIntervalSince1970 * 1000)
+        
+        return dictionary
+    }
+    
+    func getHeadingDictionary(_ heading: SYRFHeading) -> [String: Any] {
+        var dictionary = [String: Any]()
+        var rawDictionary = [String: Any]()
+        
+        dictionary["headingMagnetic"] = heading.magneticHeading
+        dictionary["headingTrue"] = heading.trueHeading
+        dictionary["accuracy"] = heading.accuracy
+        rawDictionary["x"] = heading.rawData.x
+        rawDictionary["y"] = heading.rawData.y
+        rawDictionary["z"] = heading.rawData.z
+        dictionary["rawData"] = rawDictionary
+        dictionary["timestamp"] = floor(heading.timestamp.timeIntervalSince1970 * 1000)
         
         return dictionary
     }

@@ -5,6 +5,7 @@ import {
   SYRFLocationAccuracyRequestIOS,
   LocationAccuracyStatusIOS,
   LocationAuthorizationStatusIOS,
+  SYRFHeadingConfig,
 } from './types';
 
 const { SyrfClient } = NativeModules;
@@ -24,6 +25,8 @@ type SyrfClientType = {
     permissions: SYRFLocationAccuracyRequestIOS
   ): Promise<LocationAccuracyStatusIOS>;
   checkAccuracyPermissions(): Promise<LocationAccuracyStatusIOS>;
+
+  configureHeading(options?: SYRFHeadingConfig): Promise<any>;
   startHeadingUpdates(): void;
   stopHeadingUpdates(): void;
 };
@@ -32,6 +35,8 @@ export const {
   UPDATE_LOCATION_EVENT,
   CURRENT_LOCATION_EVENT,
   FAILED_LOCATION_EVENT,
+  UPDATE_HEADING_EVENT,
+  FAILED_HEADING_EVENT,
 } = SyrfClient.getConstants();
 
 export default SyrfClient as SyrfClientType;

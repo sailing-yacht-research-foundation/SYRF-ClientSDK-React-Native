@@ -6,13 +6,18 @@ import SyrfClient, {
   UPDATE_LOCATION_EVENT,
   CURRENT_LOCATION_EVENT,
   FAILED_LOCATION_EVENT,
+  UPDATE_HEADING_EVENT,
+  FAILED_HEADING_EVENT,
   useEventListener,
   SYRFLocation,
+  SYRFHeading,
   SYRFPermissionRequestConfig,
   SYRFLocationConfigIOS,
   SYRFLocationAuthorizationRequestIOS,
   LocationActivityTypeIOS,
   LocationAccuracyIOS,
+  SYRFHeadingConfigIOS,
+  HeadingOrientationTypeIOS,
 } from 'react-native-syrf-client';
 import SimpleButton from './SimpleButton';
 import { hasPermissionIOS, timeFormat } from './Utils';
@@ -20,6 +25,7 @@ import { hasPermissionIOS, timeFormat } from './Utils';
 export default function App() {
   const [result, setResult] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [updatingHeading, setUpdatingHeading] = useState(false);
 
   useEventListener(UPDATE_LOCATION_EVENT, (location: SYRFLocation) => {
     const format = 'dd/MM/yyyy, hh:mm:ss';
@@ -39,7 +45,21 @@ export default function App() {
     });
   });
 
+  useEventListener(UPDATE_HEADING_EVENT, (heading: SYRFHeading) => {
+    const format = 'dd/MM/yyyy, hh:mm:ss';
+    const time = timeFormat(heading.timestamp, format);
+    console.log(heading);
+    setResult((prev) => {
+      return `${prev}\n${time} - Current Heading (${heading.headingMagnetic}, ${heading.headingTrue}, ${heading.accuracy}, ${heading.rawData})`;
+    });
+  });
+
   useEventListener(FAILED_LOCATION_EVENT, (error: string) => {
+    console.log(error);
+    setResult((prev) => `${prev}\nError - error)`);
+  });
+
+  useEventListener(FAILED_HEADING_EVENT, (error: string) => {
     console.log(error);
     setResult((prev) => `${prev}\nError - error)`);
   });
@@ -49,6 +69,14 @@ export default function App() {
       configureAndroid();
     } else {
       configureIOS();
+    }
+  }, []);
+
+  const configureSyrfHeading = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      configureHeadingAndroid();
+    } else {
+      configureHeadingIOS();
     }
   }, []);
 
@@ -100,13 +128,45 @@ export default function App() {
     }
   };
 
+  const configureHeadingAndroid = () => {};
+
+  const configureHeadingIOS = async () => {
+    const config: SYRFHeadingConfigIOS = {
+      distanceFilter: 10,
+      orientation: HeadingOrientationTypeIOS.Portrait,
+    };
+
+    // Check for permission status
+    const permissionStatus = await SyrfClient.checkAuthorizationPermissions();
+    if (hasPermissionIOS(permissionStatus)) {
+      SyrfClient.configureHeading(config);
+      return;
+    }
+
+    // Request permission
+    const permissionRequestConfig: SYRFLocationAuthorizationRequestIOS = {
+      permissions: 'always',
+    };
+    const requestPermissionStatus =
+      await SyrfClient.requestAuthorizationPermissions(permissionRequestConfig);
+    setResult(
+      (prev) =>
+        `${prev}\nAuthorization location request status: ${requestPermissionStatus}`
+    );
+    if (hasPermissionIOS(requestPermissionStatus)) {
+      SyrfClient.configureHeading(config);
+    }
+  };
+
   useEffect(() => {
     configureSyrfLocation();
+    configureSyrfHeading();
 
     return () => {
       SyrfClient.stopLocationUpdates();
+      SyrfClient.stopHeadingUpdates();
     };
-  }, [configureSyrfLocation]);
+  }, [configureSyrfLocation, configureSyrfHeading]);
 
   const toggleUpdate = () => {
     if (updating) {
@@ -122,6 +182,16 @@ export default function App() {
     SyrfClient.getCurrentLocation();
   };
 
+  const toggleHeading = () => {
+    if (updatingHeading) {
+      SyrfClient.stopHeadingUpdates();
+    } else {
+      SyrfClient.startHeadingUpdates();
+    }
+
+    setUpdatingHeading((prev) => !prev);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.textResultContainer}>
@@ -132,6 +202,12 @@ export default function App() {
         text={updating ? 'Stop Location Update' : 'Start Location Update'}
         textStyle={styles.buttonText}
         onPress={toggleUpdate}
+      />
+      <SimpleButton
+        style={styles.button}
+        text={updatingHeading ? 'Stop Heading Update' : 'Start Heading Update'}
+        textStyle={styles.buttonText}
+        onPress={toggleHeading}
       />
       <SimpleButton
         style={styles.button}
