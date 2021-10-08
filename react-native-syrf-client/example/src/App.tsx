@@ -128,7 +128,9 @@ export default function App() {
     }
   };
 
-  const configureHeadingAndroid = () => {};
+  const configureHeadingAndroid = () => {
+    SyrfClient.configureHeading();
+  };
 
   const configureHeadingIOS = async () => {
     const config: SYRFHeadingConfigIOS = {
