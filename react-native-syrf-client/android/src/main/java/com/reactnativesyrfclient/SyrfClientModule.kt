@@ -6,18 +6,21 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.location.Location
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
 import com.syrf.location.configs.SYRFLocationConfig
+import com.syrf.location.configs.SYRFMagneticConfig
 import com.syrf.location.configs.SYRFPermissionRequestConfig
 import com.syrf.location.data.SYRFLocationData
+import com.syrf.location.data.SYRFMagneticSensorData
 import com.syrf.location.interfaces.SYRFLocation
+import com.syrf.location.interfaces.SYRFMagneticSensor
 import com.syrf.location.permissions.PermissionsManager
 import com.syrf.location.utils.Constants
 import com.syrf.location.utils.Constants.EXTRA_LOCATION
+import com.syrf.location.utils.Constants.EXTRA_MAGNETIC_SENSOR_DATA
 import com.syrf.location.utils.MissingLocationException
 import com.syrf.time.configs.SYRFTimeConfig
 import com.syrf.time.interfaces.SYRFTime
@@ -36,6 +39,8 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     const val KEY_PERMISSION_REQUEST_CANCEL_BTN = "cancelButton"
 
     const val UPDATE_LOCATION_EVENT = "UPDATE_LOCATION_EVENT"
+    const val CURRENT_LOCATION_EVENT = "CURRENT_LOCATION_EVENT"
+    const val UPDATE_HEADING_EVENT = "UPDATE_HEADING_EVENT"
     const val LOCATION_LAT = "latitude"
     const val LOCATION_LON = "longitude"
     const val LOCATION_TIME = "timestamp"
@@ -43,13 +48,21 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     const val LOCATION_SPEED = "speed"
     const val LOCATION_HEADING = "heading"
 
+    const val HEADING_X = "x"
+    const val HEADING_Y = "y"
+    const val HEADING_Z = "z"
+    const val RAW_DATA = "raw_data"
+    const val HEADING_TIME = "timestamp"
+
     const val REQUEST_PERMISSION_CODE = 1
   }
 
   private val locationBroadcastReceiver = LocationBroadcastReceiver()
+  private val headingBroadcastReceiver = HeadingBroadcastReceiver()
   private var permissionRequestConfig: SYRFPermissionRequestConfig? = null
 
   private var waitingForLocationPermission = false
+  private var waitingForCurrentLocationPermission = false
   private val activity: Activity by lazy { currentActivity as Activity }
   private val broadcastManager: LocalBroadcastManager by lazy {
     LocalBroadcastManager.getInstance(activity)
@@ -62,6 +75,8 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   override fun getConstants(): Map<String, Any> {
     val constants: MutableMap<String, Any> = HashMap()
     constants[UPDATE_LOCATION_EVENT] = UPDATE_LOCATION_EVENT
+    constants[CURRENT_LOCATION_EVENT] = CURRENT_LOCATION_EVENT
+    constants[UPDATE_HEADING_EVENT] = UPDATE_HEADING_EVENT
     return constants
   }
 
@@ -77,6 +92,10 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
           SYRFLocation.subscribeToLocationUpdates(activity)
         }
         waitingForLocationPermission = false
+        if (waitingForCurrentLocationPermission) {
+          getCurrentLocation()
+        }
+        waitingForCurrentLocationPermission = false
       },
       exceptionCallback = {
         waitingForLocationPermission = false
@@ -116,6 +135,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
 
     SYRFTime.configure(SYRFTimeConfig.Builder().set(), activity)
     SYRFLocation.configure(builder.set(), activity)
+    SYRFMagneticSensor.configure(SYRFMagneticConfig.Builder().set(), activity)
     promise.resolve(true)
   }
 
@@ -135,6 +155,23 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
       locationBroadcastReceiver,
       IntentFilter(Constants.ACTION_LOCATION_BROADCAST)
     )
+  }
+
+  @ReactMethod
+  fun getCurrentLocation() {
+    SYRFLocation.getCurrentPosition(activity) { location, error ->
+      if (error != null) {
+        if (error is MissingLocationException) {
+          waitingForCurrentLocationPermission = true
+          requestLocationPermission()
+        }
+        return@getCurrentPosition
+      }
+      if (location != null) {
+        val params = locationToMap(location)
+        sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, params)
+      }
+    }
   }
 
   @ReactMethod
@@ -161,21 +198,65 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     )
   }
 
+  @ReactMethod
+  fun startHeadingUpdates() {
+    SYRFMagneticSensor.subscribeToSensorDataUpdates(activity){}
+    broadcastManager.registerReceiver(
+      headingBroadcastReceiver,
+      IntentFilter(Constants.ACTION_MAGNETIC_SENSOR_BROADCAST)
+    )
+  }
+
+  @ReactMethod
+  fun stopHeadingUpdates() {
+    SYRFMagneticSensor.unsubscribeToSensorDataUpdates()
+    broadcastManager.unregisterReceiver(headingBroadcastReceiver)
+  }
+
+  private  fun locationToMap(location: SYRFLocationData): WritableMap  {
+    val params = Arguments.createMap()
+    params.putDouble(LOCATION_LAT, location.latitude)
+    params.putDouble(LOCATION_LON, location.longitude)
+    params.putDouble(LOCATION_TIME, location.timestamp.toDouble())
+    params.putDouble(LOCATION_ACCURACY, location.horizontalAccuracy.toDouble())
+    params.putDouble(LOCATION_SPEED, location.speed.toDouble())
+    params.putDouble(LOCATION_HEADING, location.trueHeading.toDouble())
+    return params;
+  }
+
   private inner class LocationBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
       val location = intent.getParcelableExtra<SYRFLocationData>(EXTRA_LOCATION)
 
       if (location != null) {
-        val params = Arguments.createMap()
-        params.putDouble(LOCATION_LAT, location.latitude)
-        params.putDouble(LOCATION_LON, location.longitude)
-        params.putDouble(LOCATION_TIME, location.timestamp.toDouble())
-        params.putDouble(LOCATION_ACCURACY, location.horizontalAccuracy.toDouble())
-        params.putDouble(LOCATION_SPEED, location.speed.toDouble())
-        params.putDouble(LOCATION_HEADING, location.trueHeading.toDouble())
+        val params = locationToMap(location)
         sendEvent(reactApplicationContext, UPDATE_LOCATION_EVENT, params)
       }
     }
   }
+
+  private inner class HeadingBroadcastReceiver : BroadcastReceiver() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+      val heading = intent.getParcelableExtra<SYRFMagneticSensorData>(EXTRA_MAGNETIC_SENSOR_DATA)
+
+      if (heading != null) {
+        val params = headingToMap(heading)
+        sendEvent(reactApplicationContext, UPDATE_HEADING_EVENT, params)
+      }
+    }
+  }
+
+  private  fun headingToMap(heading: SYRFMagneticSensorData): WritableMap  {
+    val params = Arguments.createMap()
+    val rawParams = Arguments.createMap()
+    rawParams.putDouble(HEADING_X, heading.x.toDouble())
+    rawParams.putDouble(HEADING_Y, heading.y.toDouble())
+    rawParams.putDouble(HEADING_Z, heading.z.toDouble())
+    params.putMap(RAW_DATA, rawParams)
+    params.putDouble(HEADING_TIME, heading.timestamp.toDouble())
+    return params;
+  }
+
 }

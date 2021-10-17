@@ -31,11 +31,17 @@ RCT_EXTERN_METHOD(configure:(NSDictionary *)options
                   success:(RCTPromiseResolveBlock)success
                   failure:(RCTPromiseRejectBlock)failure)
 
+RCT_EXTERN_METHOD(configureHeading:(NSDictionary *)options
+                  success:(RCTPromiseResolveBlock)success
+                  failure:(RCTPromiseRejectBlock)failure)
+
 #pragma mark - Monitoring
 
 RCT_EXTERN_METHOD(startLocationUpdates)
 
 RCT_EXTERN_METHOD(startHeadingUpdates)
+
+RCT_EXTERN_METHOD(getCurrentLocation)
 
 RCT_EXTERN_METHOD(stopLocationUpdates)
 
