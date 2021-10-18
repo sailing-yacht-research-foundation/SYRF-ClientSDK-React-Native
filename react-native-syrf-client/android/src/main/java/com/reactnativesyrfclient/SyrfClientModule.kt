@@ -13,14 +13,18 @@ import com.facebook.react.modules.core.PermissionListener
 import com.syrf.location.configs.SYRFLocationConfig
 import com.syrf.location.configs.SYRFMagneticConfig
 import com.syrf.location.configs.SYRFPermissionRequestConfig
+import com.syrf.location.configs.SYRFRotationConfig
 import com.syrf.location.data.SYRFLocationData
 import com.syrf.location.data.SYRFMagneticSensorData
+import com.syrf.location.data.SYRFRotationSensorData
 import com.syrf.location.interfaces.SYRFLocation
 import com.syrf.location.interfaces.SYRFMagneticSensor
+import com.syrf.location.interfaces.SYRFRotationSensor
 import com.syrf.location.permissions.PermissionsManager
 import com.syrf.location.utils.Constants
 import com.syrf.location.utils.Constants.EXTRA_LOCATION
 import com.syrf.location.utils.Constants.EXTRA_MAGNETIC_SENSOR_DATA
+import com.syrf.location.utils.Constants.EXTRA_ROTATION_SENSOR_DATA
 import com.syrf.location.utils.MissingLocationException
 import com.syrf.time.configs.SYRFTimeConfig
 import com.syrf.time.interfaces.SYRFTime
@@ -51,7 +55,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     const val HEADING_X = "x"
     const val HEADING_Y = "y"
     const val HEADING_Z = "z"
-    const val RAW_DATA = "raw_data"
+    const val RAW_DATA = "rawData"
     const val HEADING_TIME = "timestamp"
 
     const val REQUEST_PERMISSION_CODE = 1
@@ -135,7 +139,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
 
     SYRFTime.configure(SYRFTimeConfig.Builder().set(), activity)
     SYRFLocation.configure(builder.set(), activity)
-    SYRFMagneticSensor.configure(SYRFMagneticConfig.Builder().set(), activity)
+    SYRFRotationSensor.configure(SYRFRotationConfig.Builder().set(), activity)
     promise.resolve(true)
   }
 
@@ -200,16 +204,16 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun startHeadingUpdates() {
-    SYRFMagneticSensor.subscribeToSensorDataUpdates(activity){}
+    SYRFRotationSensor.subscribeToSensorDataUpdates(activity){}
     broadcastManager.registerReceiver(
       headingBroadcastReceiver,
-      IntentFilter(Constants.ACTION_MAGNETIC_SENSOR_BROADCAST)
+      IntentFilter(Constants.ACTION_ROTATION_SENSOR_BROADCAST)
     )
   }
 
   @ReactMethod
   fun stopHeadingUpdates() {
-    SYRFMagneticSensor.unsubscribeToSensorDataUpdates()
+    SYRFRotationSensor.unsubscribeToSensorDataUpdates()
     broadcastManager.unregisterReceiver(headingBroadcastReceiver)
   }
 
@@ -239,7 +243,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   private inner class HeadingBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-      val heading = intent.getParcelableExtra<SYRFMagneticSensorData>(EXTRA_MAGNETIC_SENSOR_DATA)
+      val heading = intent.getParcelableExtra<SYRFRotationSensorData>(EXTRA_ROTATION_SENSOR_DATA)
 
       if (heading != null) {
         val params = headingToMap(heading)
@@ -248,7 +252,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     }
   }
 
-  private  fun headingToMap(heading: SYRFMagneticSensorData): WritableMap  {
+  private  fun headingToMap(heading: SYRFRotationSensorData): WritableMap  {
     val params = Arguments.createMap()
     val rawParams = Arguments.createMap()
     rawParams.putDouble(HEADING_X, heading.x.toDouble())
