@@ -255,7 +255,14 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   private  fun headingToMap(heading: SYRFRotationSensorData): WritableMap  {
     val params = Arguments.createMap()
     val rawParams = Arguments.createMap()
-    rawParams.putDouble(HEADING_X, heading.x.toDouble())
+
+    var h = heading.x.toDouble();
+    if (h < 0.0) {
+      h += 2 * Math.PI;
+    }
+    h = h * 180 / Math.PI;
+
+    rawParams.putDouble(HEADING_X, h)
     rawParams.putDouble(HEADING_Y, heading.y.toDouble())
     rawParams.putDouble(HEADING_Z, heading.z.toDouble())
     params.putMap(RAW_DATA, rawParams)
