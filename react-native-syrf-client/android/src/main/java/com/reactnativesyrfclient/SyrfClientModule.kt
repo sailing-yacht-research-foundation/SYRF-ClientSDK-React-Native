@@ -184,6 +184,11 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     broadcastManager.unregisterReceiver(locationBroadcastReceiver)
   }
 
+  @ReactMethod
+    fun onAppMoveToBackground() {
+      SYRFLocation.onStop(activity)
+    }
+
   private fun requestLocationPermission() {
     val config = permissionRequestConfig ?: SYRFPermissionRequestConfig.getDefault(activity)
     PermissionsManager(activity).showPermissionReasonAndRequest(
@@ -216,6 +221,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     SYRFRotationSensor.unsubscribeToSensorDataUpdates()
     broadcastManager.unregisterReceiver(headingBroadcastReceiver)
   }
+
 
   private  fun locationToMap(location: SYRFLocationData): WritableMap  {
     val params = Arguments.createMap()

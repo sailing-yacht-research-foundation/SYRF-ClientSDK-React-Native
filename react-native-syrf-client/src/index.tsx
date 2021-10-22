@@ -16,6 +16,9 @@ type SyrfClientType = {
   stopLocationUpdates(): void;
   getCurrentLocation(): void;
 
+  // Android only
+  onAppMoveToBackground(): void;
+
   // iOS only
   requestAuthorizationPermissions(
     permissions: SYRFLocationAuthorizationRequestIOS
