@@ -6,6 +6,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.hardware.SensorManager
+import android.view.Display
+import android.view.Surface
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.PermissionAwareActivity
@@ -17,6 +20,7 @@ import com.syrf.location.configs.SYRFRotationConfig
 import com.syrf.location.data.SYRFLocationData
 import com.syrf.location.data.SYRFMagneticSensorData
 import com.syrf.location.data.SYRFRotationSensorData
+import com.syrf.location.data.SYRFRotationData
 import com.syrf.location.interfaces.SYRFLocation
 import com.syrf.location.interfaces.SYRFMagneticSensor
 import com.syrf.location.interfaces.SYRFRotationSensor
@@ -71,6 +75,9 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   private val broadcastManager: LocalBroadcastManager by lazy {
     LocalBroadcastManager.getInstance(activity)
   }
+
+  private val rotationMatrix = FloatArray(9)
+  private val orientation = FloatArray(3)
 
   override fun getName(): String {
     return "SyrfClient"
@@ -185,9 +192,9 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-    fun onAppMoveToBackground() {
-      SYRFLocation.onStop(activity)
-    }
+  fun onAppMoveToBackground() {
+    SYRFLocation.onStop(activity)
+  }
 
   private fun requestLocationPermission() {
     val config = permissionRequestConfig ?: SYRFPermissionRequestConfig.getDefault(activity)
@@ -247,30 +254,64 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   }
 
   private inner class HeadingBroadcastReceiver : BroadcastReceiver() {
-
     override fun onReceive(context: Context, intent: Intent) {
-      val heading = intent.getParcelableExtra<SYRFRotationSensorData>(EXTRA_ROTATION_SENSOR_DATA)
+      var rotationSensorData: FloatArray? = null
+      val data = intent.getParcelableExtra<SYRFRotationSensorData>(EXTRA_ROTATION_SENSOR_DATA)
+      rotationSensorData = if (data != null) floatArrayOf(data.x, data.y, data.z, data.s) else { null }
 
-      if (heading != null) {
-        val params = headingToMap(heading)
+      if (rotationSensorData != null) {
+        val rotationData = calculateOrientations(rotationSensorData)
+        val params = headingToMap(rotationData)
         sendEvent(reactApplicationContext, UPDATE_HEADING_EVENT, params)
       }
     }
   }
 
-  private  fun headingToMap(heading: SYRFRotationSensorData): WritableMap  {
+  private fun activityDisplay() : Display? {
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+      return activity.display
+    }
+    @Suppress("DEPRECATION")
+    return activity.windowManager.defaultDisplay
+  }
+
+  private fun calculateOrientations(rotationValues: FloatArray): SYRFRotationData {
+    SensorManager.getRotationMatrixFromVector(rotationMatrix, rotationValues)
+    val (matrixColumn, sense) = when (val rotation =
+      activityDisplay()?.rotation
+    ) {
+      Surface.ROTATION_0 -> Pair(0, 1)
+      Surface.ROTATION_90 -> Pair(1, -1)
+      Surface.ROTATION_180 -> Pair(0, -1)
+      Surface.ROTATION_270 -> Pair(1, 1)
+      else -> error("Invalid screen rotation value: $rotation")
+    }
+    val x = sense * rotationMatrix[matrixColumn]
+    val y = sense * rotationMatrix[matrixColumn + 3]
+    val azimuth = (-kotlin.math.atan2(y.toDouble(), x.toDouble()))
+
+    SensorManager.getOrientation(rotationMatrix, orientation)
+
+    return SYRFRotationData(
+      azimuth = azimuth.toFloat(),
+      pitch = orientation[1],
+      roll = orientation[2],
+      timestamp = System.currentTimeMillis())
+  }
+
+  private  fun headingToMap(heading: SYRFRotationData): WritableMap  {
     val params = Arguments.createMap()
     val rawParams = Arguments.createMap()
 
-    var h = heading.x.toDouble();
+    var h = heading.azimuth.toDouble();
     if (h < 0.0) {
       h += 2 * Math.PI;
     }
     h = h * 180 / Math.PI;
 
     rawParams.putDouble(HEADING_X, h)
-    rawParams.putDouble(HEADING_Y, heading.y.toDouble())
-    rawParams.putDouble(HEADING_Z, heading.z.toDouble())
+    rawParams.putDouble(HEADING_Y, heading.pitch.toDouble())
+    rawParams.putDouble(HEADING_Z, heading.roll.toDouble())
     params.putMap(RAW_DATA, rawParams)
     params.putDouble(HEADING_TIME, heading.timestamp.toDouble())
     return params;
