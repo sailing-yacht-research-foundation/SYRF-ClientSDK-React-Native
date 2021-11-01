@@ -1,6 +1,6 @@
 {
   "name": "react-native-syrf-client",
-  "version": "0.2.8",
+  "version": "0.2.10",
   "description": "React Native module for SYRF Client SDK",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
