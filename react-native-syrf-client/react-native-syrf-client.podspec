@@ -17,6 +17,6 @@ Pod::Spec.new do |s|
   s.source_files = "ios/**/*.{h,m,mm,swift}"
 
   s.dependency "React-Core"
-  s.dependency "SYRFLocation", "~> 0.0.13"
+  s.dependency "SYRFLocation", "~> 0.0.14"
 
 end
