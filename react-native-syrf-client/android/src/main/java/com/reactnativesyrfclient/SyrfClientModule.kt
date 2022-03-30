@@ -71,10 +71,6 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
 
   private var waitingForLocationPermission = false
   private var waitingForCurrentLocationPermission = false
-  private val activity: Activity by lazy { currentActivity as Activity }
-  private val broadcastManager: LocalBroadcastManager by lazy {
-    LocalBroadcastManager.getInstance(activity)
-  }
 
   private val rotationMatrix = FloatArray(9)
   private val orientation = FloatArray(3)
@@ -96,91 +92,97 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     permissions: Array<out String>,
     grantResults: IntArray
   ): Boolean {
-    PermissionsManager(activity).handleResults(
-      permissions,
-      successCallback = {
-        if (waitingForLocationPermission) {
-          SYRFLocation.subscribeToLocationUpdates(activity)
-        }
-        waitingForLocationPermission = false
-        if (waitingForCurrentLocationPermission) {
-          getCurrentLocation()
-        }
-        waitingForCurrentLocationPermission = false
-      },
-      exceptionCallback = {
-        waitingForLocationPermission = false
-      })
-
-    return true
+    if (currentActivity != null) {
+      PermissionsManager(currentActivity!!).handleResults(
+        permissions,
+        successCallback = {
+          if (waitingForLocationPermission) {
+            SYRFLocation.subscribeToLocationUpdates(currentActivity!!)
+          }
+          waitingForLocationPermission = false
+          if (waitingForCurrentLocationPermission) {
+            getCurrentLocation()
+          }
+          waitingForCurrentLocationPermission = false
+        },
+        exceptionCallback = {
+          waitingForLocationPermission = false
+        })
+      return true
+    }
+    return false
   }
 
   @ReactMethod
   fun configure(params: ReadableMap, promise: Promise) {
+    if (currentActivity != null) {
+      val builder = SYRFLocationConfig.Builder()
+      getLongOrNull(params, KEY_UPDATE_INTERVAL)?.let {
+        builder.updateInterval(it)
+      }
+      getIntOrNull(params, KEY_MAX_LOCATION_ACCURACY)?.let {
+        builder.maximumLocationAccuracy(it)
+      }
+      getMapOrNull(params, KEY_PERMISSION_REQUEST_CONFIG)?.let { permissionRequestParams ->
+        val permissionConfigBuilder = SYRFPermissionRequestConfig.Builder()
 
-    val builder = SYRFLocationConfig.Builder()
-    getLongOrNull(params, KEY_UPDATE_INTERVAL)?.let {
-      builder.updateInterval(it)
+        getStringOrNull(permissionRequestParams, KEY_PERMISSION_REQUEST_TITLE)?.let {
+          permissionConfigBuilder.title(it)
+        }
+        getStringOrNull(permissionRequestParams, KEY_PERMISSION_REQUEST_MESSAGE)?.let {
+          permissionConfigBuilder.message(it)
+        }
+        getStringOrNull(permissionRequestParams, KEY_PERMISSION_REQUEST_OK_BTN)?.let {
+          permissionConfigBuilder.okButton(it)
+        }
+        getStringOrNull(permissionRequestParams, KEY_PERMISSION_REQUEST_CANCEL_BTN)?.let {
+          permissionConfigBuilder.cancelButton(it)
+        }
+
+        permissionRequestConfig = permissionConfigBuilder.set(currentActivity!!)
+      }
+
+      SYRFTime.configure(SYRFTimeConfig.Builder().set(), currentActivity!!)
+      SYRFLocation.configure(builder.set(), currentActivity!!)
+      SYRFRotationSensor.configure(SYRFRotationConfig.Builder().set(), currentActivity!!)
+      promise.resolve(true)
     }
-    getIntOrNull(params, KEY_MAX_LOCATION_ACCURACY)?.let {
-      builder.maximumLocationAccuracy(it)
-    }
-    getMapOrNull(params, KEY_PERMISSION_REQUEST_CONFIG)?.let { permissionRequestParams ->
-      val permissionConfigBuilder = SYRFPermissionRequestConfig.Builder()
-
-      getStringOrNull(permissionRequestParams, KEY_PERMISSION_REQUEST_TITLE)?.let {
-        permissionConfigBuilder.title(it)
-      }
-      getStringOrNull(permissionRequestParams, KEY_PERMISSION_REQUEST_MESSAGE)?.let {
-        permissionConfigBuilder.message(it)
-      }
-      getStringOrNull(permissionRequestParams, KEY_PERMISSION_REQUEST_OK_BTN)?.let {
-        permissionConfigBuilder.okButton(it)
-      }
-      getStringOrNull(permissionRequestParams, KEY_PERMISSION_REQUEST_CANCEL_BTN)?.let {
-        permissionConfigBuilder.cancelButton(it)
-      }
-
-      permissionRequestConfig = permissionConfigBuilder.set(activity)
-    }
-
-    SYRFTime.configure(SYRFTimeConfig.Builder().set(), activity)
-    SYRFLocation.configure(builder.set(), activity)
-    SYRFRotationSensor.configure(SYRFRotationConfig.Builder().set(), activity)
-    promise.resolve(true)
   }
 
   @ReactMethod
   fun startLocationUpdates() {
-    SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
-      if (error != null) {
-        if (error is MissingLocationException) {
-          waitingForLocationPermission = true
-          requestLocationPermission()
+    if (currentActivity != null) {
+      SYRFLocation.subscribeToLocationUpdates(currentActivity!!) { _, error ->
+        if (error != null) {
+          if (error is MissingLocationException) {
+            waitingForLocationPermission = true
+            requestLocationPermission()
+          }
+          return@subscribeToLocationUpdates
         }
-        return@subscribeToLocationUpdates
       }
+      LocalBroadcastManager.getInstance(currentActivity!!).registerReceiver(
+        locationBroadcastReceiver,
+        IntentFilter(Constants.ACTION_LOCATION_BROADCAST)
+      )
     }
-
-    broadcastManager.registerReceiver(
-      locationBroadcastReceiver,
-      IntentFilter(Constants.ACTION_LOCATION_BROADCAST)
-    )
   }
 
   @ReactMethod
   fun getCurrentLocation() {
-    SYRFLocation.getCurrentPosition(activity) { location, error ->
-      if (error != null) {
-        if (error is MissingLocationException) {
-          waitingForCurrentLocationPermission = true
-          requestLocationPermission()
+    if (currentActivity != null) {
+      SYRFLocation.getCurrentPosition(currentActivity!!) { location, error ->
+        if (error != null) {
+          if (error is MissingLocationException) {
+            waitingForCurrentLocationPermission = true
+            requestLocationPermission()
+          }
+          return@getCurrentPosition
         }
-        return@getCurrentPosition
-      }
-      if (location != null) {
-        val params = locationToMap(location)
-        sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, params)
+        if (location != null) {
+          val params = locationToMap(location)
+          sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, params)
+        }
       }
     }
   }
@@ -188,49 +190,57 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun stopLocationUpdates() {
     SYRFLocation.unsubscribeToLocationUpdates()
-    broadcastManager.unregisterReceiver(locationBroadcastReceiver)
+    currentActivity?.let {
+      LocalBroadcastManager.getInstance(it).unregisterReceiver(locationBroadcastReceiver)
+    }
   }
 
   @ReactMethod
   fun onAppMoveToBackground() {
-    SYRFLocation.onStop(activity)
+    currentActivity?.let { SYRFLocation.onStop(it) }
   }
 
   private fun requestLocationPermission() {
-    val config = permissionRequestConfig ?: SYRFPermissionRequestConfig.getDefault(activity)
-    PermissionsManager(activity).showPermissionReasonAndRequest(
-      config,
-      onPositionClick = {
-        (activity as? PermissionAwareActivity)?.requestPermissions(
-          arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-          ),
-          REQUEST_PERMISSION_CODE,
-          this
-        )
-      },
-      onNegativeClick = {}
-    )
+    val config = permissionRequestConfig
+    if (currentActivity != null) {
+      PermissionsManager(currentActivity!!).showPermissionReasonAndRequest(
+        config!!,
+        onPositionClick = {
+          (currentActivity as? PermissionAwareActivity)?.requestPermissions(
+            arrayOf(
+              Manifest.permission.ACCESS_FINE_LOCATION,
+              Manifest.permission.ACCESS_COARSE_LOCATION
+            ),
+            REQUEST_PERMISSION_CODE,
+            this
+          )
+        },
+        onNegativeClick = {}
+      )
+    }
   }
 
   @ReactMethod
   fun startHeadingUpdates() {
-    SYRFRotationSensor.subscribeToSensorDataUpdates(activity){}
-    broadcastManager.registerReceiver(
-      headingBroadcastReceiver,
-      IntentFilter(Constants.ACTION_ROTATION_SENSOR_BROADCAST)
-    )
+    if (currentActivity != null) {
+      SYRFRotationSensor.subscribeToSensorDataUpdates(currentActivity!!) {}
+      LocalBroadcastManager.getInstance(currentActivity!!).registerReceiver(
+        headingBroadcastReceiver,
+        IntentFilter(Constants.ACTION_ROTATION_SENSOR_BROADCAST)
+      )
+    }
   }
 
   @ReactMethod
   fun stopHeadingUpdates() {
     SYRFRotationSensor.unsubscribeToSensorDataUpdates()
-    broadcastManager.unregisterReceiver(headingBroadcastReceiver)
+    currentActivity?.let {
+      LocalBroadcastManager.getInstance(it).unregisterReceiver(headingBroadcastReceiver)
+    }
   }
 
 
-  private  fun locationToMap(location: SYRFLocationData): WritableMap  {
+  private fun locationToMap(location: SYRFLocationData): WritableMap {
     val params = Arguments.createMap()
     params.putDouble(LOCATION_LAT, location.latitude)
     params.putDouble(LOCATION_LON, location.longitude)
@@ -257,49 +267,57 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     override fun onReceive(context: Context, intent: Intent) {
       var rotationSensorData: FloatArray? = null
       val data = intent.getParcelableExtra<SYRFRotationSensorData>(EXTRA_ROTATION_SENSOR_DATA)
-      rotationSensorData = if (data != null) floatArrayOf(data.x, data.y, data.z, data.s) else { null }
+      rotationSensorData = if (data != null) floatArrayOf(data.x, data.y, data.z, data.s) else {
+        null
+      }
 
       if (rotationSensorData != null) {
         val rotationData = calculateOrientations(rotationSensorData)
-        val params = headingToMap(rotationData)
-        sendEvent(reactApplicationContext, UPDATE_HEADING_EVENT, params)
+        if (rotationData != null) {
+          val params = headingToMap(rotationData)
+          sendEvent(reactApplicationContext, UPDATE_HEADING_EVENT, params)
+        }
       }
     }
   }
 
-  private fun activityDisplay() : Display? {
+  private fun activityDisplay(): Display? {
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-      return activity.display
+      return currentActivity?.display
     }
     @Suppress("DEPRECATION")
-    return activity.windowManager.defaultDisplay
+    return currentActivity?.windowManager?.defaultDisplay
   }
 
-  private fun calculateOrientations(rotationValues: FloatArray): SYRFRotationData {
-    SensorManager.getRotationMatrixFromVector(rotationMatrix, rotationValues)
-    val (matrixColumn, sense) = when (val rotation =
-      activityDisplay()?.rotation
-    ) {
-      Surface.ROTATION_0 -> Pair(0, 1)
-      Surface.ROTATION_90 -> Pair(1, -1)
-      Surface.ROTATION_180 -> Pair(0, -1)
-      Surface.ROTATION_270 -> Pair(1, 1)
-      else -> error("Invalid screen rotation value: $rotation")
+  private fun calculateOrientations(rotationValues: FloatArray): SYRFRotationData? {
+    if (activityDisplay() != null) {
+      SensorManager.getRotationMatrixFromVector(rotationMatrix, rotationValues)
+      val (matrixColumn, sense) = when (val rotation =
+        activityDisplay()?.rotation
+      ) {
+        Surface.ROTATION_0 -> Pair(0, 1)
+        Surface.ROTATION_90 -> Pair(1, -1)
+        Surface.ROTATION_180 -> Pair(0, -1)
+        Surface.ROTATION_270 -> Pair(1, 1)
+        else -> error("Invalid screen rotation value: $rotation")
+      }
+      val x = sense * rotationMatrix[matrixColumn]
+      val y = sense * rotationMatrix[matrixColumn + 3]
+      val azimuth = (-kotlin.math.atan2(y.toDouble(), x.toDouble()))
+
+      SensorManager.getOrientation(rotationMatrix, orientation)
+
+      return SYRFRotationData(
+        azimuth = azimuth.toFloat(),
+        pitch = orientation[1],
+        roll = orientation[2],
+        timestamp = System.currentTimeMillis()
+      )
     }
-    val x = sense * rotationMatrix[matrixColumn]
-    val y = sense * rotationMatrix[matrixColumn + 3]
-    val azimuth = (-kotlin.math.atan2(y.toDouble(), x.toDouble()))
-
-    SensorManager.getOrientation(rotationMatrix, orientation)
-
-    return SYRFRotationData(
-      azimuth = azimuth.toFloat(),
-      pitch = orientation[1],
-      roll = orientation[2],
-      timestamp = System.currentTimeMillis())
+    return null
   }
 
-  private  fun headingToMap(heading: SYRFRotationData): WritableMap  {
+  private fun headingToMap(heading: SYRFRotationData): WritableMap {
     val params = Arguments.createMap()
     val rawParams = Arguments.createMap()
 
