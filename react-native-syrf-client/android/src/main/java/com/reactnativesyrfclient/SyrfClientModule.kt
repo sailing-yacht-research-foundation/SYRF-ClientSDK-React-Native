@@ -160,7 +160,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun startLocationUpdates() {
     if (currentActivity == null) {
-      return@subscribeToLocationUpdates
+      return
     }
     SYRFLocation.subscribeToLocationUpdates(currentActivity!!) { _, error ->
       if (error != null) {
@@ -180,7 +180,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun getCurrentLocation() {
     if (currentActivity == null) {
-      return@getCurrentPosition
+      return
     }
     SYRFLocation.getCurrentPosition(currentActivity!!) { location, error ->
       if (error != null) {
