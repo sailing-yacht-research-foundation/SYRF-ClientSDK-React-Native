@@ -15,11 +15,17 @@ type SyrfClientType = {
   startLocationUpdates(): void;
   stopLocationUpdates(): void;
   getCurrentLocation(): void;
+  getBatteryLevel(): Promise<number>;
+  getPhoneModel(): Promise<string>;
+  getOsVersion(): Promise<string>;
 
   // Android only
   onAppMoveToBackground(): void;
 
   // iOS only
+  enableBatteryMonitoring(): void;
+  disableBatteryMonitoring(): void;
+
   requestAuthorizationPermissions(
     permissions: SYRFLocationAuthorizationRequestIOS
   ): Promise<LocationAuthorizationStatusIOS>;

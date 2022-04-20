@@ -1,4 +1,5 @@
 import SYRFLocation
+import SYRFDeviceInfo
 import CoreLocation
 import React
 
@@ -16,6 +17,8 @@ class SyrfClient: RCTEventEmitter {
     private var locationManager: LocationManager!
     private var headingManager: HeadingManager!
     private var permissionsManager: PermissionsManager!
+    private var deviceInfoManager: DeviceInfoManager!
+    private var batteryManager: BatteryManager!
     
     private var callbackAuthorization: RCTPromiseResolveBlock?
     private var callbackAccuracy: RCTPromiseResolveBlock?
@@ -28,6 +31,8 @@ class SyrfClient: RCTEventEmitter {
         self.locationManager = LocationManager()
         self.headingManager = HeadingManager()
         self.permissionsManager = PermissionsManager()
+        self.deviceInfoManager = DeviceInfoManager()
+        self.batteryManager = BatteryManager()
         
         super.init()
         
@@ -80,12 +85,32 @@ class SyrfClient: RCTEventEmitter {
     }
 
     // MARK: - Exported Methods
-    
-    @objc(multiply:withB:withResolver:withRejecter:)
-    func multiply(a: Float, b: Float, resolve:RCTPromiseResolveBlock,reject:RCTPromiseRejectBlock) {
-        resolve(a*b)
+
+    @objc(enableBatteryMonitoring)
+    func enableBatteryMonitoring() {
+        self.batteryManager.enableBatteryMonitoring()
     }
-    
+
+    @objc(disableBatteryMonitoring)
+    func disableBatteryMonitoring() {
+        self.batteryManager.disableBatteryMonitoring()
+    }
+
+    @objc(getBatteryLevel:)
+    func getBatteryLevel(resolve: RCTPromiseResolveBlock) {
+        resolve(self.batteryLevel.getBatteryLevel())
+    }
+
+    @objc(getPhoneModel:)
+    func getPhoneModel(resolve: RCTPromiseResolveBlock) {
+        resolve(self.deviceInfoManager.getPhoneModel())
+    }
+
+    @objc(getOsVersion:)
+    func getOsVersion(resolve: RCTPromiseResolveBlock) {
+        resolve(self.deviceInfoManager.getOsVersion())
+    }
+
     @objc(requestAuthorizationPermissions:success:failure:)
     func requestAuthorizationPermission(dictionary: [String: Any], success: @escaping RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
         if let permissions = dictionary["permissions"] as? String {
@@ -95,7 +120,6 @@ class SyrfClient: RCTEventEmitter {
         } else {
             failure("0", "Invalid parameters", nil)
         }
-        
     }
     
     @objc(checkAuthorizationPermissions:failure:)
@@ -335,10 +359,14 @@ extension SyrfClient {
         
         dictionary["latitude"] = location.coordinate.latitude
         dictionary["longitude"] = location.coordinate.longitude
-        dictionary["accuracy"] = location.horizontalAccuracy
-        dictionary["speed"] = location.speed
-        dictionary["heading"] = location.courseHeading
+        dictionary["instrumentHorizontalAccuracyMeters"] = location.horizontalAccuracy
+        dictionary["instrumentVerticalAccuracyMeters"] = location.verticalAccuracy
+        dictionary["instrumentCOGTrue"] = location.courseHeading
+        dictionary["instrumentCOGTrueAccuracyDegrees"] = location.courseAccuracy
+        dictionary["instrumentSOGMetersPerSecond"] = location.speed
+        dictionary["instrumentSOGAccuracyMetersPerSecond"] = location.speedAccuracy
         dictionary["timestamp"] = floor(location.timestamp.timeIntervalSince1970 * 1000)
+        dictionary["batteryLevel"] = location.batteryLevel
         
         return dictionary
     }

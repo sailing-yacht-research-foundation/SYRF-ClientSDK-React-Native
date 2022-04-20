@@ -32,7 +32,7 @@ export default function App() {
     const time = timeFormat(location.timestamp, format);
     console.log(location);
     setResult((prev) => {
-      return `${prev}\n${time} - Update location (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`;
+      return `${prev}\n${time} - Update location (${location.latitude}, ${location.longitude}, ${location.instrumentHorizontalAccuracyMeters}, ${location.instrumentSOGMetersPerSecond}, ${location.instrumentCOGTrue})`;
     });
   });
 
@@ -41,7 +41,7 @@ export default function App() {
     const time = timeFormat(location.timestamp, format);
     console.log(location);
     setResult((prev) => {
-      return `${prev}\n${time} - Current Location (${location.latitude}, ${location.longitude}, ${location.accuracy}, ${location.speed}, ${location.heading})`;
+      return `${prev}\n${time} - Current Location (${location.latitude}, ${location.longitude}, ${location.instrumentHorizontalAccuracyMeters}, ${location.instrumentSOGAccuracyMetersPerSecond}, ${location.instrumentCOGTrue})`;
     });
   });
 
