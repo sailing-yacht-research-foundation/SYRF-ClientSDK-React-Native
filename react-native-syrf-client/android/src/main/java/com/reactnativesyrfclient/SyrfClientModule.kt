@@ -51,10 +51,15 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     const val UPDATE_HEADING_EVENT = "UPDATE_HEADING_EVENT"
     const val LOCATION_LAT = "latitude"
     const val LOCATION_LON = "longitude"
+    const val LOCATION_HORZ_ACCURACY = "instrumentHorizontalAccuracyMeters"
+    const val LOCATION_VERT_ACCURACY = "instrumentVerticalAccuracyMeters"
+    const val LOCATION_BEARING = "instrumentCOGTrue"
+    const val LOCATION_BEARING_ACCURACY = "instrumentCOGTrueAccuracyDegrees"
+    const val LOCATION_SPEED = "instrumentSOGMetersPerSecond"
+    const val LOCATION_SPEED_ACCURACY = "instrumentSOGAccuracyMetersPerSecond"
     const val LOCATION_TIME = "timestamp"
-    const val LOCATION_ACCURACY = "accuracy"
-    const val LOCATION_SPEED = "speed"
-    const val LOCATION_HEADING = "heading"
+    const val LOCATION_BATTERY_LEVEL = "batteryLevel"
+    const val LOCATION_PROVIDER = "provider"
 
     const val HEADING_X = "x"
     const val HEADING_Y = "y"
@@ -252,16 +257,20 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
     }
   }
 
-
   private fun locationToMap(location: SYRFLocationData): WritableMap {
-    val params = Arguments.createMap()
-    params.putDouble(LOCATION_LAT, location.latitude)
-    params.putDouble(LOCATION_LON, location.longitude)
-    params.putDouble(LOCATION_TIME, location.timestamp.toDouble())
-    params.putDouble(LOCATION_ACCURACY, location.horizontalAccuracy.toDouble())
-    params.putDouble(LOCATION_SPEED, location.speed.toDouble())
-    params.putDouble(LOCATION_HEADING, location.trueHeading.toDouble())
-    return params;
+    return Arguments.createMap().apply {
+      putDouble(LOCATION_LAT, location.latitude)
+      putDouble(LOCATION_LON, location.longitude)
+      putDouble(LOCATION_HORZ_ACCURACY, location.horizontalAccuracy.toDouble())
+      putDouble(LOCATION_VERT_ACCURACY, location.verticalAccuracy.toDouble())
+      putDouble(LOCATION_BEARING, location.trueHeading.toDouble())
+      putDouble(LOCATION_BEARING_ACCURACY, location.bearingAccuracy.toDouble())
+      putDouble(LOCATION_SPEED, location.speed.toDouble())
+      putDouble(LOCATION_SPEED_ACCURACY, location.speedAccuracy.toDouble())
+      putDouble(LOCATION_TIME, location.timestamp.toDouble())
+      putDouble(LOCATION_BATTERY_LEVEL, location.batteryLevel.toDouble())
+      putString(LOCATION_PROVIDER, location.provider)
+    }
   }
 
   private inner class LocationBroadcastReceiver : BroadcastReceiver() {

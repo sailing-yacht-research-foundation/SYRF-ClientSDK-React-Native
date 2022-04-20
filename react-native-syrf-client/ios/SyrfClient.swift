@@ -335,10 +335,14 @@ extension SyrfClient {
         
         dictionary["latitude"] = location.coordinate.latitude
         dictionary["longitude"] = location.coordinate.longitude
-        dictionary["accuracy"] = location.horizontalAccuracy
-        dictionary["speed"] = location.speed
-        dictionary["heading"] = location.courseHeading
+        dictionary["instrumentHorizontalAccuracyMeters"] = location.horizontalAccuracy
+        dictionary["instrumentVerticalAccuracyMeters"] = location.verticalAccuracy
+        dictionary["instrumentCOGTrue"] = location.courseHeading
+        dictionary["instrumentCOGTrueAccuracyDegrees"] = location.courseAccuracy
+        dictionary["instrumentSOGMetersPerSecond"] = location.speed
+        dictionary["instrumentSOGAccuracyMetersPerSecond"] = location.speedAccuracy
         dictionary["timestamp"] = floor(location.timestamp.timeIntervalSince1970 * 1000)
+        dictionary["batteryLevel"] = location.batteryLevel
         
         return dictionary
     }
