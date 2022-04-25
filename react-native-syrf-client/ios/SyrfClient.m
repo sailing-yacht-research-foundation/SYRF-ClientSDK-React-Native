@@ -3,10 +3,17 @@
 
 @interface RCT_EXTERN_MODULE(SyrfClient, RCTEventEmitter<RCTBridgeModule>)
 
-// TODO: remove
-RCT_EXTERN_METHOD(multiply:(float)a withB:(float)b
-                 withResolver:(RCTPromiseResolveBlock)resolve
-                 withRejecter:(RCTPromiseRejectBlock)reject)
+#pragma mark - DeviceInfo
+
+RCT_EXTERN_METHOD(enableBatteryMonitoring)
+
+RCT_EXTERN_METHOD(disableBatteryMonitoring)
+
+RCT_EXTERN_METHOD(getBatteryLevel:(RCTPromiseResolveBlock)resolve)
+
+RCT_EXTERN_METHOD(getPhoneModel:(RCTPromiseResolveBlock)resolve)
+
+RCT_EXTERN_METHOD(getOsVersion:(RCTPromiseResolveBlock)resolve)
 
 #pragma mark - Permissions
 
