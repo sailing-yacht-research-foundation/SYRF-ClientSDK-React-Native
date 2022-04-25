@@ -22,6 +22,7 @@ import com.syrf.location.data.SYRFMagneticSensorData
 import com.syrf.location.data.SYRFRotationSensorData
 import com.syrf.location.data.SYRFRotationData
 import com.syrf.location.interfaces.SYRFLocation
+import com.syrf.device_info.interfaces.SYRFDeviceInfo
 import com.syrf.location.interfaces.SYRFMagneticSensor
 import com.syrf.location.interfaces.SYRFRotationSensor
 import com.syrf.location.permissions.PermissionsManager
@@ -34,7 +35,7 @@ import com.syrf.time.configs.SYRFTimeConfig
 import com.syrf.time.interfaces.SYRFTime
 import java.util.*
 
-class SyrfClientModule(reactContext: ReactApplicationContext) :
+class SyrfClientModule(val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext), PermissionListener {
 
   companion object {
@@ -152,7 +153,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun getBatteryLevel(promise: Promise) {
-    promise.resolve(SYRFDeviceInfo.getBatteryLevel())
+    promise.resolve(SYRFDeviceInfo.getBatteryLevel(reactContext))
   }
 
   @ReactMethod
@@ -283,7 +284,7 @@ class SyrfClientModule(reactContext: ReactApplicationContext) :
       putDouble(LOCATION_SPEED, location.speed.toDouble())
       putDouble(LOCATION_SPEED_ACCURACY, location.speedAccuracy.toDouble())
       putDouble(LOCATION_TIME, location.timestamp.toDouble())
-      putDouble(LOCATION_BATTERY_LEVEL, location.batteryLevel.toDouble())
+      putDouble(LOCATION_BATTERY_LEVEL, (SYRFDeviceInfo.getBatteryLevel(reactContext) / 100).toDouble())
       putString(LOCATION_DESCRIPTION, location.provider)
     }
   }
