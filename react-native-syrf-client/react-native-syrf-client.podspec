@@ -18,5 +18,6 @@ Pod::Spec.new do |s|
 
   s.dependency "React-Core"
   s.dependency "SYRFLocation", "~> 0.0.14"
+  s.dependency "SYRFDeviceInfo"
 
 end

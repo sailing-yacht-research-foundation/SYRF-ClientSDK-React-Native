@@ -180,7 +180,7 @@ export default function App() {
     setUpdating((prev) => !prev);
   };
 
-  const toggleLocation = () => {
+  const getCurrentLocation = () => {
     SyrfClient.getCurrentLocation();
   };
 
@@ -194,11 +194,64 @@ export default function App() {
     setUpdatingHeading((prev) => !prev);
   };
 
+  const printPhoneModelInfo = async () => {
+    const phoneModel = await SyrfClient.getPhoneModel();
+    const osVersion = await SyrfClient.getOsVersion();
+    console.log(`Phone model: ${phoneModel}, OS version: ${osVersion}`);
+    setResult((prev) => {
+      return `${prev}\nPhone model: ${phoneModel}, OS version: ${osVersion}`;
+    });
+  };
+
+  const printBatteryLevel = async () => {
+    const batteryLevel = await SyrfClient.getBatteryLevel();
+    setResult((prev) => {
+      return `${prev}\nBattery level: ${batteryLevel}`;
+    });
+  };
+
+  const enableBatteryTracking = async () => {
+    SyrfClient.enableBatteryMonitoring();
+  };
+
+  const disableBatteryTracking = async () => {
+    SyrfClient.disableBatteryMonitoring();
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.textResultContainer}>
         <Text style={styles.textResult}>{result}</Text>
       </View>
+      {
+        Platform.OS === 'ios' ? <View style={{
+          flexDirection: 'row'
+        }}>
+          <SimpleButton
+            style={styles.button}
+            text={'Enable battery'}
+            textStyle={styles.buttonText}
+            onPress={enableBatteryTracking}
+          />
+          <SimpleButton
+            style={styles.button}
+            text={'Disable Battery'}
+            textStyle={styles.buttonText}
+            onPress={disableBatteryTracking}
+          />
+        </View> : null}
+      <SimpleButton
+        style={styles.button}
+        text={'Print battery level'}
+        textStyle={styles.buttonText}
+        onPress={printBatteryLevel}
+      />
+      <SimpleButton
+        style={styles.button}
+        text={'Print phone model'}
+        textStyle={styles.buttonText}
+        onPress={printPhoneModelInfo}
+      />
       <SimpleButton
         style={styles.button}
         text={updating ? 'Stop Location Update' : 'Start Location Update'}
@@ -215,7 +268,7 @@ export default function App() {
         style={styles.button}
         text={'Get Current Location'}
         textStyle={styles.buttonText}
-        onPress={toggleLocation}
+        onPress={getCurrentLocation}
       />
     </View>
   );

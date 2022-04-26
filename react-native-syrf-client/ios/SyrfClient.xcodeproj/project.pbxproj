@@ -7,10 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-
-		5E555C0D2413F4C50049A1A2 /* SyrfClient.m in Sources */ = {isa = PBXBuildFile; fileRef = B3E7B5891CC2AC0600A0062D /* SyrfClient.m */; };
-		F4FF95D7245B92E800C19C63 /*  SyrfClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4FF95D6245B92E800C19C63 /*  SyrfClient.swift */; };
-
+		D5024DBEBA70117E13BA7556 /* libPods-SyrfClient.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5B641CE3653D0FC0EED82424 /* libPods-SyrfClient.a */; };
+		F4FF95D7245B92E800C19C63 /* SyrfClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4FF95D6245B92E800C19C63 /* SyrfClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -27,11 +25,12 @@
 
 /* Begin PBXFileReference section */
 		134814201AA4EA6300B7C361 /* libSyrfClient.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSyrfClient.a; sourceTree = BUILT_PRODUCTS_DIR; };
-
+		26E8190FBFCEF92A2506A3FF /* Pods-SyrfClient.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SyrfClient.release.xcconfig"; path = "Target Support Files/Pods-SyrfClient/Pods-SyrfClient.release.xcconfig"; sourceTree = "<group>"; };
+		5B641CE3653D0FC0EED82424 /* libPods-SyrfClient.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SyrfClient.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		957474952EFF92EC8B3CDDEE /* Pods-SyrfClient.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SyrfClient.debug.xcconfig"; path = "Target Support Files/Pods-SyrfClient/Pods-SyrfClient.debug.xcconfig"; sourceTree = "<group>"; };
 		B3E7B5891CC2AC0600A0062D /* SyrfClient.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SyrfClient.m; sourceTree = "<group>"; };
 		F4FF95D5245B92E700C19C63 /* SyrfClient-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SyrfClient-Bridging-Header.h"; sourceTree = "<group>"; };
 		F4FF95D6245B92E800C19C63 /* SyrfClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyrfClient.swift; sourceTree = "<group>"; };
-
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,6 +38,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D5024DBEBA70117E13BA7556 /* libPods-SyrfClient.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,16 +53,33 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		373D8CFD10A75AA6B753B20E /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				957474952EFF92EC8B3CDDEE /* Pods-SyrfClient.debug.xcconfig */,
+				26E8190FBFCEF92A2506A3FF /* Pods-SyrfClient.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 		58B511D21A9E6C8500147676 = {
 			isa = PBXGroup;
 			children = (
-
 				F4FF95D6245B92E800C19C63 /* SyrfClient.swift */,
 				B3E7B5891CC2AC0600A0062D /* SyrfClient.m */,
 				F4FF95D5245B92E700C19C63 /* SyrfClient-Bridging-Header.h */,
-
 				134814211AA4EA7D00B7C361 /* Products */,
+				373D8CFD10A75AA6B753B20E /* Pods */,
+				622163AE19E32EB285F97E0F /* Frameworks */,
 			);
+			sourceTree = "<group>";
+		};
+		622163AE19E32EB285F97E0F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				5B641CE3653D0FC0EED82424 /* libPods-SyrfClient.a */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -72,6 +89,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 58B511EF1A9E6C8500147676 /* Build configuration list for PBXNativeTarget "SyrfClient" */;
 			buildPhases = (
+				95482A40F67EB7C504F03D38 /* [CP] Check Pods Manifest.lock */,
 				58B511D71A9E6C8500147676 /* Sources */,
 				58B511D81A9E6C8500147676 /* Frameworks */,
 				58B511D91A9E6C8500147676 /* CopyFiles */,
@@ -117,15 +135,37 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		95482A40F67EB7C504F03D38 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-SyrfClient-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		58B511D71A9E6C8500147676 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-
 				F4FF95D7245B92E800C19C63 /* SyrfClient.swift in Sources */,
-				B3E7B58A1CC2AC0600A0062D /* SyrfClient.m in Sources */,
-
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -175,7 +215,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -218,7 +258,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				VALIDATE_PRODUCT = YES;
@@ -227,6 +267,7 @@
 		};
 		58B511F01A9E6C8500147676 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 957474952EFF92EC8B3CDDEE /* Pods-SyrfClient.debug.xcconfig */;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -238,16 +279,15 @@
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = SyrfClient;
 				SKIP_INSTALL = YES;
-
 				SWIFT_OBJC_BRIDGING_HEADER = "SyrfClient-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
-
 			};
 			name = Debug;
 		};
 		58B511F11A9E6C8500147676 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 26E8190FBFCEF92A2506A3FF /* Pods-SyrfClient.release.xcconfig */;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -259,10 +299,8 @@
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = SyrfClient;
 				SKIP_INSTALL = YES;
-
 				SWIFT_OBJC_BRIDGING_HEADER = "SyrfClient-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
-
 			};
 			name = Release;
 		};

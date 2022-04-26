@@ -9,11 +9,14 @@ RCT_EXTERN_METHOD(enableBatteryMonitoring)
 
 RCT_EXTERN_METHOD(disableBatteryMonitoring)
 
-RCT_EXTERN_METHOD(getBatteryLevel:(RCTPromiseResolveBlock)resolve)
+RCT_EXTERN_METHOD(getBatteryLevel:(RCTPromiseResolveBlock)success
+                 failure:(RCTPromiseRejectBlock)failure)
 
-RCT_EXTERN_METHOD(getPhoneModel:(RCTPromiseResolveBlock)resolve)
+RCT_EXTERN_METHOD(getPhoneModel:(RCTPromiseResolveBlock)success
+                 failure:(RCTPromiseRejectBlock)failure)
 
-RCT_EXTERN_METHOD(getOsVersion:(RCTPromiseResolveBlock)resolve)
+RCT_EXTERN_METHOD(getOsVersion:(RCTPromiseResolveBlock)success
+                 failure:(RCTPromiseRejectBlock)failure)
 
 #pragma mark - Permissions
 

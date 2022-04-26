@@ -96,19 +96,19 @@ class SyrfClient: RCTEventEmitter {
         self.batteryManager.disableBatteryMonitoring()
     }
 
-    @objc(getBatteryLevel:)
-    func getBatteryLevel(resolve: RCTPromiseResolveBlock) {
-        resolve(self.batteryLevel.getBatteryLevel())
+    @objc(getBatteryLevel:failure:)
+    func getBatteryLevel(success: @escaping RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        success(self.batteryManager.getBatteryLevel())
     }
 
-    @objc(getPhoneModel:)
-    func getPhoneModel(resolve: RCTPromiseResolveBlock) {
-        resolve(self.deviceInfoManager.getPhoneModel())
+    @objc(getPhoneModel:failure:)
+    func getPhoneModel(success: @escaping RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        success(self.deviceInfoManager.getPhoneModel())
     }
 
-    @objc(getOsVersion:)
-    func getOsVersion(resolve: RCTPromiseResolveBlock) {
-        resolve(self.deviceInfoManager.getOsVersion())
+    @objc(getOsVersion:failure:)
+    func getOsVersion(success: @escaping RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        success(self.deviceInfoManager.getOsVersion())
     }
 
     @objc(requestAuthorizationPermissions:success:failure:)
@@ -366,7 +366,6 @@ extension SyrfClient {
         dictionary["instrumentSOGMetersPerSecond"] = location.speed
         dictionary["instrumentSOGAccuracyMetersPerSecond"] = location.speedAccuracy
         dictionary["timestamp"] = floor(location.timestamp.timeIntervalSince1970 * 1000)
-        dictionary["batteryLevel"] = location.batteryLevel
         
         return dictionary
     }
