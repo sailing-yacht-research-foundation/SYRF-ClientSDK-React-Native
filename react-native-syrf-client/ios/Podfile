@@ -15,5 +15,6 @@ target 'SyrfClient' do
   # Pods for SyrfClient
   
   pod 'SYRFLocation'
+  pod 'SYRFDeviceInfo'
 
 end

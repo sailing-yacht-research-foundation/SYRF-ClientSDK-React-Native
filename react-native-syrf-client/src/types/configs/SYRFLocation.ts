@@ -12,5 +12,4 @@ export interface SYRFLocation {
   instrumentSOGAccuracyMetersPerSecond: number;
   instrumentDescription: string | undefined;
   timestamp: number;
-  batteryLevel: number;
 }
