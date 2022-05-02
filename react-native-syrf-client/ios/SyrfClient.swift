@@ -5,9 +5,10 @@ import React
 
 let UPDATE_LOCATION_EVENT       = "UPDATE_LOCATION_EVENT"
 let FAILED_LOCATION_EVENT       = "FAILED_LOCATION_EVENT"
-let CURRENT_LOCATION_EVENT      = "CURRENT_LOCATION_EVENT"
-let UPDATE_HEADING_EVENT        = "UPDATE_HEADING_EVENT"
 let FAILED_HEADING_EVENT        = "FAILED_HEADING_EVENT"
+
+let defaultThrottleForegroundDelay = 0.2
+let defaultThrottleBackgroundDelay = 1.0
 
 @objc(SyrfClient)
 class SyrfClient: RCTEventEmitter {
@@ -24,6 +25,14 @@ class SyrfClient: RCTEventEmitter {
     private var callbackAccuracy: RCTPromiseResolveBlock?
     
     private var hasListeners: Bool = false
+    
+    private var throttleForegroundDelay = defaultThrottleForegroundDelay
+    private var throttleBackgroundDelay = defaultThrottleBackgroundDelay
+    
+    private var updateThrottle = Throttle(minimumDelay: defaultThrottleForegroundDelay)
+    private var lastLocation: SYRFLocation? = nil
+    private var lastHeading: SYRFHeading? = nil
+    
     
     // MARK: - Lifecycle Methods
     
@@ -49,9 +58,7 @@ class SyrfClient: RCTEventEmitter {
     override func constantsToExport() -> [AnyHashable : Any]! {
         return [
             UPDATE_LOCATION_EVENT: UPDATE_LOCATION_EVENT,
-            CURRENT_LOCATION_EVENT: CURRENT_LOCATION_EVENT,
             FAILED_LOCATION_EVENT: FAILED_LOCATION_EVENT,
-            UPDATE_HEADING_EVENT: UPDATE_HEADING_EVENT,
             FAILED_HEADING_EVENT: FAILED_HEADING_EVENT,
         ];
     }
@@ -77,9 +84,7 @@ class SyrfClient: RCTEventEmitter {
     override func supportedEvents() -> [String]! {
         return [
             UPDATE_LOCATION_EVENT,
-            CURRENT_LOCATION_EVENT,
             FAILED_LOCATION_EVENT,
-            UPDATE_HEADING_EVENT,
             FAILED_HEADING_EVENT,
         ];
     }
@@ -179,8 +184,8 @@ class SyrfClient: RCTEventEmitter {
         if let orientation = configuration["orientation"] as? String {
             options.headingOrientation = self.getHeadingOrientation(orientation: orientation)
         }
-        if let distanceFilter = configuration["distanceFilter"] as? Double {
-            options.headingFilter = self.getHeadingDistanceFilter(distance: distanceFilter)
+        if let headingFilter = configuration["headingFilter"] as? Double {
+            options.headingFilter = self.getHeadingFilter(headingFilter: headingFilter)
         }
         
         self.headingManager.configure(options)
@@ -212,6 +217,22 @@ class SyrfClient: RCTEventEmitter {
         self.headingManager.stopHeadingUpdates()
     }
     
+    func sendLocationUpdate() {
+        guard let lastLocation = lastLocation, let lastHeading = lastHeading else {
+            return
+        }
+        self.sendEvent(eventName: UPDATE_LOCATION_EVENT, data: getLocationDictionary(lastLocation, lastHeading))
+    }
+    
+    func processLocationUpdate() {
+        let delay = UIApplication.shared.applicationState == .background ? throttleBackgroundDelay : throttleForegroundDelay
+        if (updateThrottle.minimumDelay != delay) {
+            updateThrottle.updateMinimumDelay(interval: delay)
+        }
+        updateThrottle.throttle {
+            self.sendLocationUpdate()
+        }
+    }
 }
 
 // MARK: - Extension for LocationManager Delegate
@@ -222,19 +243,21 @@ extension SyrfClient: LocationDelegate {
     }
     
     func locationUpdated(_ location: SYRFLocation) {
-        self.sendEvent(eventName: UPDATE_LOCATION_EVENT, data: self.getLocationDictionary(location))
+        lastLocation = location
+        processLocationUpdate()
     }
     
     func currentLocationUpdated(_ location: SYRFLocation) {
-        self.sendEvent(eventName: CURRENT_LOCATION_EVENT, data: self.getLocationDictionary(location))
+        lastLocation = location
+        processLocationUpdate()
     }
 }
 
 // MARK: - Extension for HeadingManager Delegate
 extension SyrfClient: HeadingDelegate {
-    
     func headingUpdated(_ heading: SYRFHeading) {
-        self.sendEvent(eventName: UPDATE_HEADING_EVENT, data: self.getHeadingDictionary(heading))
+        lastHeading = heading
+        processLocationUpdate()
     }
     
     func headingFailed(_ error: Error) {
@@ -328,8 +351,8 @@ extension SyrfClient {
         return distance == 0 ? kCLDistanceFilterNone : distance
     }
     
-    func getHeadingDistanceFilter(distance: Double) -> Double {
-        return distance == 0 ? kCLHeadingFilterNone : distance
+    func getHeadingFilter(headingFilter: Double) -> Double {
+        return headingFilter == 0 ? kCLHeadingFilterNone : headingFilter
     }
     
     func getHeadingOrientation(orientation: String) -> CLDeviceOrientation {
@@ -354,7 +377,7 @@ extension SyrfClient {
         return .portrait
     }
     
-    func getLocationDictionary(_ location: SYRFLocation) -> [String: Any] {
+    func getLocationDictionary(_ location: SYRFLocation, _ heading: SYRFHeading) -> [String: Any] {
         var dictionary = [String: Any]()
         
         dictionary["latitude"] = location.coordinate.latitude
@@ -366,6 +389,7 @@ extension SyrfClient {
         dictionary["instrumentSOGMetersPerSecond"] = location.speed
         dictionary["instrumentSOGAccuracyMetersPerSecond"] = location.speedAccuracy
         dictionary["timestamp"] = floor(location.timestamp.timeIntervalSince1970 * 1000)
+        dictionary["heading"] = getHeadingDictionary(heading)
         
         return dictionary
     }

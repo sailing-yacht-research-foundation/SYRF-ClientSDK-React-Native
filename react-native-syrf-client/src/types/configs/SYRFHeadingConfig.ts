@@ -16,7 +16,7 @@ export interface SYRFHeadingConfig {}
 /**
  * The class helps you config params of location request for IOS
  * @property activity The activity type for the location
- * @property distanceFilter The minimum change in distance on which location updates are notified
+ * @property headingFilter The minimum change in distance on which location updates are notified
  * @property desiredAccuracy The accuracy of the location updates
  * @property pauseUpdatesAutomatically The flag for battery optimization location updates
  * @property allowIndicatorInBackground The flag for showing the visual indicator of location usage
@@ -24,5 +24,5 @@ export interface SYRFHeadingConfig {}
  */
 export interface SYRFHeadingConfigIOS extends SYRFHeadingConfig {
   orientation?: HeadingOrientationTypeIOS | void;
-  distanceFilter?: number | void;
+  headingFilter?: number | void;
 }

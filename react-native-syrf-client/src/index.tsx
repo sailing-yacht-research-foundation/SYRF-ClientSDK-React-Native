@@ -42,9 +42,7 @@ type SyrfClientType = {
 
 export const {
   UPDATE_LOCATION_EVENT,
-  CURRENT_LOCATION_EVENT,
   FAILED_LOCATION_EVENT,
-  UPDATE_HEADING_EVENT,
   FAILED_HEADING_EVENT,
 } = SyrfClient.getConstants();
 

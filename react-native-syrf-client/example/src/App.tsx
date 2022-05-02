@@ -4,13 +4,10 @@ import SyrfClient, {
   SYRFLocationConfigAndroid,
   LocationAccuracyPriority,
   UPDATE_LOCATION_EVENT,
-  CURRENT_LOCATION_EVENT,
   FAILED_LOCATION_EVENT,
-  UPDATE_HEADING_EVENT,
   FAILED_HEADING_EVENT,
   useEventListener,
   SYRFLocation,
-  SYRFHeading,
   SYRFPermissionRequestConfig,
   SYRFLocationConfigIOS,
   SYRFLocationAuthorizationRequestIOS,
@@ -32,25 +29,7 @@ export default function App() {
     const time = timeFormat(location.timestamp, format);
     console.log(location);
     setResult((prev) => {
-      return `${prev}\n${time} - Update location (${location.latitude}, ${location.longitude}, ${location.instrumentHorizontalAccuracyMeters}, ${location.instrumentSOGMetersPerSecond}, ${location.instrumentCOGTrue})`;
-    });
-  });
-
-  useEventListener(CURRENT_LOCATION_EVENT, (location: SYRFLocation) => {
-    const format = 'dd/MM/yyyy, hh:mm:ss';
-    const time = timeFormat(location.timestamp, format);
-    console.log(location);
-    setResult((prev) => {
-      return `${prev}\n${time} - Current Location (${location.latitude}, ${location.longitude}, ${location.instrumentHorizontalAccuracyMeters}, ${location.instrumentSOGAccuracyMetersPerSecond}, ${location.instrumentCOGTrue})`;
-    });
-  });
-
-  useEventListener(UPDATE_HEADING_EVENT, (heading: SYRFHeading) => {
-    const format = 'dd/MM/yyyy, hh:mm:ss';
-    const time = timeFormat(heading.timestamp, format);
-    console.log(heading);
-    setResult((prev) => {
-      return `${prev}\n${time} - Current Heading (${heading.headingMagnetic}, ${heading.headingTrue}, ${heading.accuracy}, ${heading.rawData})`;
+      return `${prev}\n${time} - Update location (${location.latitude}, ${location.longitude}, ${location.instrumentHorizontalAccuracyMeters}, ${location.instrumentSOGMetersPerSecond}, ${location.instrumentCOGTrue})\n${time} - Current Heading (${location.heading.headingMagnetic}, ${location.heading.headingTrue}, ${location.heading.accuracy}, ${location.heading.rawData})`;
     });
   });
 
@@ -134,7 +113,7 @@ export default function App() {
 
   const configureHeadingIOS = async () => {
     const config: SYRFHeadingConfigIOS = {
-      distanceFilter: 10,
+      headingFilter: 0.5,
       orientation: HeadingOrientationTypeIOS.Portrait,
     };
 
