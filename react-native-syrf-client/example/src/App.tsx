@@ -48,9 +48,9 @@ export default function App() {
   useEventListener(UPDATE_HEADING_EVENT, (heading: SYRFHeading) => {
     const format = 'dd/MM/yyyy, hh:mm:ss';
     const time = timeFormat(heading.timestamp, format);
-    console.log(heading);
+    console.log(JSON.stringify(heading));
     setResult((prev) => {
-      return `${prev}\n${time} - Current Heading (${heading.headingMagnetic}, ${heading.headingTrue}, ${heading.accuracy}, ${heading.rawData})`;
+      return `${prev}\n${time} - Current Heading (${heading.headingMagnetic}, ${heading.headingTrue}, ${heading.accuracy}, ${JSON.stringify(heading.rawData)})`;
     });
   });
 
