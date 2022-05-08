@@ -45,6 +45,14 @@ RCT_EXTERN_METHOD(configureHeading:(NSDictionary *)options
                   success:(RCTPromiseResolveBlock)success
                   failure:(RCTPromiseRejectBlock)failure)
 
+RCT_EXTERN_METHOD(configureNavigation:(NSDictionary *)options
+                  success:(RCTPromiseResolveBlock)success
+                  failure:(RCTPromiseRejectBlock)failure)
+
+RCT_EXTERN_METHOD(getCurrentNavigation:(NSDictionary *)options
+                  success:(RCTPromiseResolveBlock)success
+                  failure:(RCTPromiseRejectBlock)failure)
+
 #pragma mark - Monitoring
 
 RCT_EXTERN_METHOD(startLocationUpdates)

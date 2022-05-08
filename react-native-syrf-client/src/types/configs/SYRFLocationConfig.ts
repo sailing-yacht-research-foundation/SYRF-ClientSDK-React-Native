@@ -1,16 +1,8 @@
-export enum LocationAccuracyPriority {
+export enum LocationAccuracyAndroid {
   HighAccuracy = 100,
   BalancedPowerAccuracy = 102,
   LowPower = 104,
   NoPower = 105,
-}
-
-export enum LocationActivityTypeIOS {
-  Other = 'other',
-  AutomativeNavigation = 'automotiveNavigation',
-  Fitness = 'fitness',
-  OtherNavigation = 'otherNavigation',
-  Airborne = 'airborne',
 }
 
 export enum LocationAccuracyIOS {
@@ -19,6 +11,14 @@ export enum LocationAccuracyIOS {
   NearestTenMeters = 'nearestTenMeters',
   HundredMeters = 'hundredMeters',
   ThreeKilometers = 'threeKilometers',
+}
+
+export enum LocationActivityTypeIOS {
+  Other = 'other',
+  AutomativeNavigation = 'automotiveNavigation',
+  Fitness = 'fitness',
+  OtherNavigation = 'otherNavigation',
+  Airborne = 'airborne',
 }
 
 export enum LocationAuthorizationStatusIOS {
@@ -42,7 +42,7 @@ export enum LocationAccuracyStatusIOS {
  * @property okButton The title of positive button in permission request dialog
  * @property cancelButton The title of negative button in  permission request dialog
  */
-export interface SYRFPermissionRequestConfig {
+export interface SYRFPermissionRequestConfigAndroid {
   title?: string;
   message?: string;
   okButton?: string;
@@ -50,20 +50,31 @@ export interface SYRFPermissionRequestConfig {
 }
 
 /**
+ * The class help you config params for permissions iOS
+ * @property permissions The level of permissions requested
+ */
+export interface SYRFPermissionRequestConfigIOS {
+  permissions: 'whenInUse' | 'always';
+}
+
+/**
  * The class help you config params of location request
  * */
-export interface SYRFLocationConfig {}
+export interface SYRFLocationConfig {
+  enabled?: boolean;
+}
 
 /**
  * The class help you config params of location request for Android
  * @property updateInterval The interval for active location updates, in milliseconds
- * @property maximumLocationAccuracy The priority of the request
+ * @property desiredAccuracy The priority of the request
  * @property permissionRequestConfig The config for request permission dialog
  */
 export interface SYRFLocationConfigAndroid extends SYRFLocationConfig {
+  desiredAccuracy?: LocationAccuracyAndroid;
+  permissionRequestConfig?: SYRFPermissionRequestConfigAndroid;
+
   updateInterval: number;
-  maximumLocationAccuracy?: LocationAccuracyPriority;
-  permissionRequestConfig?: SYRFPermissionRequestConfig;
 }
 
 /**
@@ -76,9 +87,11 @@ export interface SYRFLocationConfigAndroid extends SYRFLocationConfig {
  * @property allowUpdatesInBackground The flag for getting location updates while the application is in the background
  */
 export interface SYRFLocationConfigIOS extends SYRFLocationConfig {
+  desiredAccuracy: LocationAccuracyIOS;
+  permissionRequestConfig?: SYRFPermissionRequestConfigIOS;
+
   activity: LocationActivityTypeIOS;
   distanceFilter: number;
-  desiredAccuracy: LocationAccuracyIOS;
   pauseUpdatesAutomatically?: boolean | void;
   allowIndicatorInBackground?: boolean | void;
   allowUpdatesInBackground?: boolean | void;
