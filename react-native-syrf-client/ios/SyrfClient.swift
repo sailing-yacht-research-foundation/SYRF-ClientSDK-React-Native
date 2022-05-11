@@ -215,6 +215,17 @@ class SyrfClient: RCTEventEmitter {
         }
     }
     
+    @objc(updateNavigationSettings:success:failure:)
+    func updateNavigationSettings(options: [String: Any]?, success: @escaping RCTPromiseResolveBlock, failure: @escaping RCTPromiseRejectBlock) {
+        self.navigationManager.updateNavigationSettings(options) { (error) in
+            if let _ = error {
+                failure("0", "Failed to update navigation", nil)
+            } else {
+                success(true)
+            }
+        }
+    }
+    
     @objc(startLocationUpdates)
     func startLocationUpdates() {
         self.locationManager.startLocationUpdates()

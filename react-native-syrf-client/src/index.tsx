@@ -42,6 +42,7 @@ type SyrfClientType = {
 
   configureNavigation(options?: SYRFNavigationConfig): Promise<any>;
   getCurrentNavigation(options?: any): Promise<any>;
+  updateNavigationSettings(options?: any): Promise<any>;
 };
 
 export const {
