@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, View, Text, Platform } from 'react-native';
+import { StyleSheet, View, Text, Platform, CheckBox } from 'react-native';
 import SyrfClient, {
   SYRFLocationConfigAndroid,
-  LocationAccuracyPriority,
   UPDATE_LOCATION_EVENT,
   CURRENT_LOCATION_EVENT,
   FAILED_LOCATION_EVENT,
@@ -18,6 +17,7 @@ import SyrfClient, {
   LocationAccuracyIOS,
   SYRFHeadingConfigIOS,
   HeadingOrientationTypeIOS,
+  SYRFNavigationConfig,
 } from 'react-native-syrf-client';
 import SimpleButton from './SimpleButton';
 import { hasPermissionIOS, timeFormat } from './Utils';
@@ -27,19 +27,21 @@ export default function App() {
   const [updating, setUpdating] = useState(false);
   const [updatingHeading, setUpdatingHeading] = useState(false);
 
+  const [enableLocation, setEnableLocation] = useState(false);
+  const [enableHeading, setEnableHeading] = useState(false);
+  const [enableDeviceInfo, setEnableDeviceInfo] = useState(false);
+
   useEventListener(UPDATE_LOCATION_EVENT, (location: SYRFLocation) => {
     const format = 'dd/MM/yyyy, hh:mm:ss';
     const time = timeFormat(location.timestamp, format);
-    console.log(location);
     setResult((prev) => {
-      return `${prev}\n${time} - Update location (${location.latitude}, ${location.longitude}, ${location.instrumentHorizontalAccuracyMeters}, ${location.instrumentSOGMetersPerSecond}, ${location.instrumentCOGTrue})`;
+      return `${time} - Update location (${location.latitude}, ${location.longitude}, ${location.instrumentHorizontalAccuracyMeters}, ${location.instrumentSOGMetersPerSecond}, ${location.instrumentCOGTrue})\n${prev}`;
     });
   });
 
   useEventListener(CURRENT_LOCATION_EVENT, (location: SYRFLocation) => {
     const format = 'dd/MM/yyyy, hh:mm:ss';
     const time = timeFormat(location.timestamp, format);
-    console.log(location);
     setResult((prev) => {
       return `${prev}\n${time} - Current Location (${location.latitude}, ${location.longitude}, ${location.instrumentHorizontalAccuracyMeters}, ${location.instrumentSOGAccuracyMetersPerSecond}, ${location.instrumentCOGTrue})`;
     });
@@ -48,9 +50,8 @@ export default function App() {
   useEventListener(UPDATE_HEADING_EVENT, (heading: SYRFHeading) => {
     const format = 'dd/MM/yyyy, hh:mm:ss';
     const time = timeFormat(heading.timestamp, format);
-    console.log(JSON.stringify(heading));
     setResult((prev) => {
-      return `${prev}\n${time} - Current Heading (${heading.headingMagnetic}, ${heading.headingTrue}, ${heading.accuracy}, ${JSON.stringify(heading.rawData)})`;
+      return `${time} - ${JSON.stringify(heading)})\n${prev}`;
     });
   });
 
@@ -88,12 +89,16 @@ export default function App() {
       cancelButton: 'Cancel',
     };
 
-    const config: SYRFLocationConfigAndroid = {
-      updateInterval: 2,
-      maximumLocationAccuracy: LocationAccuracyPriority.HighAccuracy,
-      permissionRequestConfig: permissionRequestConfig,
+    const config: SYRFNavigationConfig = {
+      // updateInterval: 700,
+      // permissionRequestConfig: permissionRequestConfig, // NamH: TODO
+      location: { enabled: true },
+      heading: { enabled: true },
+      deviceInfo: { enabled: true },
+      throttleBackgroundDelay: 2000,
+      throttleForegroundDelay: 1000,
     };
-    SyrfClient.configure(config);
+    SyrfClient.configureNavigation(config);
   };
 
   const configureIOS = async () => {
@@ -184,6 +189,14 @@ export default function App() {
     SyrfClient.getCurrentLocation();
   };
 
+  const onUpdateNavigationClick = () => {
+    SyrfClient.updateNavigationSettings({
+      enableLocation: enableLocation,
+      enableHeading: enableHeading,
+      enableDeviceInfo: enableDeviceInfo,
+    });
+  };
+
   const toggleHeading = () => {
     if (updatingHeading) {
       SyrfClient.stopHeadingUpdates();
@@ -223,53 +236,89 @@ export default function App() {
       <View style={styles.textResultContainer}>
         <Text style={styles.textResult}>{result}</Text>
       </View>
-      {
-        Platform.OS === 'ios' ? <View style={{
-          flexDirection: 'row'
-        }}>
+      <View style={styles.buttonContainer}>
+        <View style={styles.leftContainer}>
+          <View style={styles.checkboxContainer}>
+            <CheckBox
+              value={enableLocation}
+              onValueChange={setEnableLocation}
+              style={styles.checkbox}
+            />
+            <Text style={styles.label}>Location</Text>
+          </View>
+          <View style={styles.checkboxContainer}>
+            <CheckBox
+              value={enableHeading}
+              onValueChange={setEnableHeading}
+              style={styles.checkbox}
+            />
+            <Text style={styles.label}>Heading</Text>
+          </View>
+          <View style={styles.checkboxContainer}>
+            <CheckBox
+              value={enableDeviceInfo}
+              onValueChange={setEnableDeviceInfo}
+              style={styles.checkbox}
+            />
+            <Text style={styles.label}>Device Info</Text>
+          </View>
           <SimpleButton
             style={styles.button}
-            text={'Enable battery'}
+            text={'Update navigation'}
             textStyle={styles.buttonText}
-            onPress={enableBatteryTracking}
+            onPress={onUpdateNavigationClick}
+          />
+        </View>
+        <View style={styles.rightContainer}>
+          {
+            Platform.OS === 'ios' ? <View style={{
+              flexDirection: 'row'
+            }}>
+              <SimpleButton
+                style={styles.button}
+                text={'Enable battery'}
+                textStyle={styles.buttonText}
+                onPress={enableBatteryTracking}
+              />
+              <SimpleButton
+                style={styles.button}
+                text={'Disable Battery'}
+                textStyle={styles.buttonText}
+                onPress={disableBatteryTracking}
+              />
+            </View> : null}
+          <SimpleButton
+            style={styles.button}
+            text={'Print battery level'}
+            textStyle={styles.buttonText}
+            onPress={printBatteryLevel}
           />
           <SimpleButton
             style={styles.button}
-            text={'Disable Battery'}
+            text={'Print phone model'}
             textStyle={styles.buttonText}
-            onPress={disableBatteryTracking}
+            onPress={printPhoneModelInfo}
           />
-        </View> : null}
-      <SimpleButton
-        style={styles.button}
-        text={'Print battery level'}
-        textStyle={styles.buttonText}
-        onPress={printBatteryLevel}
-      />
-      <SimpleButton
-        style={styles.button}
-        text={'Print phone model'}
-        textStyle={styles.buttonText}
-        onPress={printPhoneModelInfo}
-      />
-      <SimpleButton
-        style={styles.button}
-        text={updating ? 'Stop Location Update' : 'Start Location Update'}
-        textStyle={styles.buttonText}
-        onPress={toggleUpdate}
-      />
-      <SimpleButton
-        style={styles.button}
-        text={updatingHeading ? 'Stop Heading Update' : 'Start Heading Update'}
-        textStyle={styles.buttonText}
-        onPress={toggleHeading}
-      />
-      <SimpleButton
-        style={styles.button}
-        text={'Get Current Location'}
-        textStyle={styles.buttonText}
-        onPress={getCurrentLocation}
-      />
+          <SimpleButton
+            style={styles.button}
+            text={updating ? 'Stop Navigation Update' : 'Start Navigation Update'}
+            textStyle={styles.buttonText}
+            onPress={toggleUpdate}
+          />
+          <SimpleButton
+            style={styles.button}
+            text={updatingHeading ? 'Stop Heading Update' : 'Start Heading Update'}
+            textStyle={styles.buttonText}
+            onPress={toggleHeading}
+          />
+          <SimpleButton
+            style={styles.button}
+            text={'Get Current Location'}
+            textStyle={styles.buttonText}
+            onPress={getCurrentLocation}
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -277,22 +326,30 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 10,
+  },
+  leftContainer: {
+    flex: 1,
+    marginRight: 5,
+  },
+  rightContainer: {
+    flex: 1,
+    marginLeft: 5,
   },
   textResultContainer: {
     flex: 1,
-    width: '90%',
     borderRadius: 2,
     borderColor: 'gray',
     borderWidth: 1,
-    padding: 8,
     margin: 10,
   },
   textResult: {
     flex: 1,
-    borderRadius: 2,
-    fontSize: 14,
+    fontSize: 12,
   },
   button: {
     height: 40,
@@ -301,5 +358,15 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
+  },
+  checkbox: {
+    alignSelf: 'center',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  label: {
+    margin: 8,
   },
 });
