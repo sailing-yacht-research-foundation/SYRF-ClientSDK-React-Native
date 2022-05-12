@@ -13,6 +13,9 @@ const { SyrfClient } = NativeModules;
 
 type SyrfClientType = {
   configure(options?: SYRFLocationConfig): Promise<any>;
+  configureNavigation(options?: SYRFNavigationConfig): Promise<any>;
+  updateNavigationSettings(options?: any): Promise<any>;
+
   startLocationUpdates(): void;
   stopLocationUpdates(): void;
   getCurrentLocation(): void;
@@ -40,9 +43,7 @@ type SyrfClientType = {
   startHeadingUpdates(): void;
   stopHeadingUpdates(): void;
 
-  configureNavigation(options?: SYRFNavigationConfig): Promise<any>;
   getCurrentNavigation(options?: any): Promise<any>;
-  updateNavigationSettings(options?: any): Promise<any>;
 };
 
 export const {

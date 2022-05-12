@@ -73,8 +73,8 @@ export interface SYRFLocationConfig {
 export interface SYRFLocationConfigAndroid extends SYRFLocationConfig {
   desiredAccuracy?: LocationAccuracyAndroid;
   permissionRequestConfig?: SYRFPermissionRequestConfigAndroid;
-
-  updateInterval: number;
+  provider?: 'gps' | 'network';
+  updateInterval?: number;
 }
 
 /**
