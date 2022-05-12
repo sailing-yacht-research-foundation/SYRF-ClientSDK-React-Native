@@ -81,6 +81,8 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   private var waitingForLocationPermission = false
   private var waitingForCurrentLocationPermission = false
 
+  private var usingNavigation = false
+
   private val rotationMatrix = FloatArray(9)
   private val orientation = FloatArray(3)
 
@@ -104,15 +106,18 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
         permissions,
         successCallback = {
           if (waitingForLocationPermission) {
-//            SYRFLocation.subscribeToLocationUpdates(activity)
-            SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
-              if (error != null) {
-                if (error is MissingLocationException) {
-                  waitingForLocationPermission = true
-                  requestLocationPermission()
+            if (usingNavigation) {
+              SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
+                if (error != null) {
+                  if (error is MissingLocationException) {
+                    waitingForLocationPermission = true
+                    requestLocationPermission()
+                  }
+                  return@subscribeToNavigationUpdates
                 }
-                return@subscribeToNavigationUpdates
               }
+            } else {
+              SYRFLocation.subscribeToLocationUpdates(activity)
             }
           }
           waitingForLocationPermission = false
@@ -169,21 +174,22 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun configureNavigation(params: ReadableMap, promise: Promise) {
     currentActivity?.let { activity ->
-      // val builder = SYRFLocationConfig.Builder()
-      // getLongOrNull(params, KEY_UPDATE_INTERVAL)?.let {
-      //   builder.updateInterval(it)
-      // }
-      // getIntOrNull(params, KEY_MAX_LOCATION_ACCURACY)?.let {
-      //   builder.maximumLocationAccuracy(it)
-      // }
-      // getMapOrNull(params, KEY_PERMISSION_REQUEST_CONFIG)?.let { permissionRequestParams ->
-      //   permissionRequestConfig = getSYRFPermissionRequestConfig(permissionRequestParams)
-      // }
+      usingNavigation = true
+      val builder = SYRFLocationConfig.Builder()
+      getLongOrNull(params, KEY_UPDATE_INTERVAL)?.let {
+        builder.updateInterval(it)
+      }
+      getIntOrNull(params, KEY_MAX_LOCATION_ACCURACY)?.let {
+        builder.maximumLocationAccuracy(it)
+      }
+      getMapOrNull(params, KEY_PERMISSION_REQUEST_CONFIG)?.let { permissionRequestParams ->
+        permissionRequestConfig = getSYRFPermissionRequestConfig(permissionRequestParams)
+      }
 
       SYRFNavigation.configure(
         SYRFNavigationConfig(
-          locationConfig = SYRFLocationConfig.DEFAULT,
-          headingConfig = SYRFRotationConfig.DEFAULT,
+          locationConfig = builder.set(),
+          headingConfig = SYRFRotationConfig.Builder().set(),
           deviceInfoConfig = SYRFDeviceInfoConfig(true)
         ), activity
       )
@@ -194,6 +200,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun configure(params: ReadableMap, promise: Promise) {
     currentActivity?.let { activity ->
+      usingNavigation = false
       val builder = SYRFLocationConfig.Builder()
       getLongOrNull(params, KEY_UPDATE_INTERVAL)?.let {
         builder.updateInterval(it)
@@ -238,54 +245,66 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun startLocationUpdates() {
     currentActivity?.let { activity ->
-      SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
-        if (error != null) {
-          if (error is MissingLocationException) {
-            waitingForLocationPermission = true
-            requestLocationPermission()
+      if (usingNavigation) {
+        SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
+          if (error != null) {
+            if (error is MissingLocationException) {
+              waitingForLocationPermission = true
+              requestLocationPermission()
+            }
+            return@subscribeToNavigationUpdates
           }
-          return@subscribeToLocationUpdates
         }
-      }
-      LocalBroadcastManager.getInstance(activity).registerReceiver(
-        locationBroadcastReceiver,
-        IntentFilter(Constants.ACTION_LOCATION_BROADCAST)
-      )
-    }
-  }
-
-  @ReactMethod
-  fun startNavigationUpdates() {
-    currentActivity?.let { activity ->
-      SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
-        if (error != null) {
-          if (error is MissingLocationException) {
-            waitingForLocationPermission = true
-            requestLocationPermission()
+        LocalBroadcastManager.getInstance(activity).registerReceiver(
+          navigationBroadcastReceiver,
+          IntentFilter(Constants.ACTION_NAVIGATION_BROADCAST)
+        )
+      } else {
+        SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
+          if (error != null) {
+            if (error is MissingLocationException) {
+              waitingForLocationPermission = true
+              requestLocationPermission()
+            }
+            return@subscribeToLocationUpdates
           }
-          return@subscribeToNavigationUpdates
         }
+        LocalBroadcastManager.getInstance(activity).registerReceiver(
+          locationBroadcastReceiver,
+          IntentFilter(Constants.ACTION_LOCATION_BROADCAST)
+        )
       }
-      LocalBroadcastManager.getInstance(activity).registerReceiver(
-        navigationBroadcastReceiver,
-        IntentFilter(Constants.ACTION_NAVIGATION_BROADCAST)
-      )
     }
   }
 
   @ReactMethod
   fun getCurrentLocation() {
     currentActivity?.let { activity ->
-      SYRFNavigation.getCurrentPosition(activity) { location, error ->
-        if (error != null) {
-          if (error is MissingLocationException) {
-            waitingForCurrentLocationPermission = true
-            requestLocationPermission()
+      if (usingNavigation) {
+        SYRFNavigation.getCurrentPosition(activity) { location, error ->
+          if (error != null) {
+            if (error is MissingLocationException) {
+              waitingForCurrentLocationPermission = true
+              requestLocationPermission()
+            }
+            return@getCurrentPosition
           }
-          return@getCurrentPosition
+          location?.let {
+            sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, it.toMap())
+          }
         }
-        location?.let {
-          sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, it.toMap())
+      } else {
+        SYRFLocation.getCurrentPosition(activity) { location, error ->
+          if (error != null) {
+            if (error is MissingLocationException) {
+              waitingForCurrentLocationPermission = true
+              requestLocationPermission()
+            }
+            return@getCurrentPosition
+          }
+          location?.let {
+            sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, it.toMap())
+          }
         }
       }
     }
@@ -293,16 +312,27 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun stopLocationUpdates() {
-    SYRFLocation.unsubscribeToLocationUpdates()
-    currentActivity?.let {
-      LocalBroadcastManager.getInstance(it).unregisterReceiver(locationBroadcastReceiver)
+    if (usingNavigation) {
+      currentActivity?.let {
+        SYRFNavigation.unsubscribeToNavigationUpdates(it)
+        LocalBroadcastManager.getInstance(it).unregisterReceiver(navigationBroadcastReceiver)
+      }
+    } else {
+      SYRFLocation.unsubscribeToLocationUpdates()
+      currentActivity?.let {
+        LocalBroadcastManager.getInstance(it).unregisterReceiver(locationBroadcastReceiver)
+      }
     }
   }
 
   @ReactMethod
   fun onAppMoveToBackground() {
     currentActivity?.let {
-      SYRFNavigation.onAppMoveToBackground(it)
+      if (usingNavigation) {
+        SYRFNavigation.onAppMoveToBackground(it)
+      } else {
+        SYRFLocation.onStop(it)
+      }
     }
   }
 

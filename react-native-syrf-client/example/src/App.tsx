@@ -88,11 +88,14 @@ export default function App() {
       okButton: 'OK',
       cancelButton: 'Cancel',
     };
+    const androidLocationConfig: SYRFLocationConfigAndroid = {
+      enabled: true,
+      permissionRequestConfig: permissionRequestConfig,
+      provider: 'network',
+    };
 
     const config: SYRFNavigationConfig = {
-      // updateInterval: 700,
-      // permissionRequestConfig: permissionRequestConfig, // NamH: TODO
-      location: { enabled: true },
+      location: androidLocationConfig,
       heading: { enabled: true },
       deviceInfo: { enabled: true },
       throttleBackgroundDelay: 2000,
