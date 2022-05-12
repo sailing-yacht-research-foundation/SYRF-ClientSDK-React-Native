@@ -46,9 +46,9 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     const val KEY_PERMISSION_REQUEST_OK_BTN = "okButton"
     const val KEY_PERMISSION_REQUEST_CANCEL_BTN = "cancelButton"
 
-    const val KEY_ENABLE_LOCATION = "enableLocation"
-    const val KEY_ENABLE_HEADING = "enableHeading"
-    const val KEY_ENABLE_DEVICE_INFO = "enableDeviceInfo"
+    const val KEY_ENABLE_LOCATION = "location"
+    const val KEY_ENABLE_HEADING = "heading"
+    const val KEY_ENABLE_DEVICE_INFO = "deviceInfo"
 
     const val UPDATE_LOCATION_EVENT = "UPDATE_LOCATION_EVENT"
     const val CURRENT_LOCATION_EVENT = "CURRENT_LOCATION_EVENT"
