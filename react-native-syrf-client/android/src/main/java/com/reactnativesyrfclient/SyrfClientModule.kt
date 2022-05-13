@@ -201,15 +201,6 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
         ), activity
       )
 
-      SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
-        if (error != null) {
-          if (error is MissingLocationException) {
-            waitingForLocationPermission = true
-            requestLocationPermission()
-          }
-          return@subscribeToNavigationUpdates
-        }
-      }
       LocalBroadcastManager.getInstance(activity).registerReceiver(
         navigationBroadcastReceiver,
         IntentFilter(Constants.ACTION_NAVIGATION_BROADCAST)
