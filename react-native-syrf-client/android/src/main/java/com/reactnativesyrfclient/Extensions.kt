@@ -2,6 +2,7 @@ package com.reactnativesyrfclient
 
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
+import com.syrf.device_info.data.SYRFDeviceInfoData
 import com.syrf.location.data.SYRFLocationData
 import com.syrf.location.data.SYRFRotationData
 
@@ -34,4 +35,10 @@ fun SYRFRotationData.toMap(): WritableMap {
   params.putMap(SyrfClientModule.RAW_DATA, rawParams)
   params.putDouble(SyrfClientModule.HEADING_TIME, timestamp.toDouble())
   return params
+}
+
+fun SYRFDeviceInfoData.toMap(): WritableMap = Arguments.createMap().apply {
+  putDouble(SyrfClientModule.BATTERY_LEVEL, batteryInfo)
+  putString(SyrfClientModule.OS_VERSION, osVersion)
+  putString(SyrfClientModule.DEVICE_MODEL, deviceModel)
 }
