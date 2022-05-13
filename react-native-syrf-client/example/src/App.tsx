@@ -2,14 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, View, Text, Platform, CheckBox } from 'react-native';
 import SyrfClient, {
   SYRFLocationConfigAndroid,
-  UPDATE_LOCATION_EVENT,
-  CURRENT_LOCATION_EVENT,
   FAILED_LOCATION_EVENT,
-  UPDATE_HEADING_EVENT,
   FAILED_HEADING_EVENT,
   useEventListener,
-  SYRFLocation,
-  SYRFHeading,
   SYRFPermissionRequestConfig,
   SYRFLocationConfigIOS,
   SYRFLocationAuthorizationRequestIOS,
@@ -18,6 +13,12 @@ import SyrfClient, {
   SYRFHeadingConfigIOS,
   HeadingOrientationTypeIOS,
   SYRFNavigationConfig,
+  UPDATE_NAVIGATION_EVENT,
+  SYRFNavigation,
+  CURRENT_LOCATION_EVENT,
+  SYRFLocation,
+  SYRFHeading,
+  UPDATE_HEADING_EVENT,
 } from 'react-native-syrf-client';
 import SimpleButton from './SimpleButton';
 import { hasPermissionIOS, timeFormat } from './Utils';
@@ -31,11 +32,13 @@ export default function App() {
   const [enableHeading, setEnableHeading] = useState(false);
   const [enableDeviceInfo, setEnableDeviceInfo] = useState(false);
 
-  useEventListener(UPDATE_LOCATION_EVENT, (location: SYRFLocation) => {
+  useEventListener(UPDATE_NAVIGATION_EVENT, (navigation: SYRFNavigation) => {
     const format = 'dd/MM/yyyy, hh:mm:ss';
-    const time = timeFormat(location.timestamp, format);
+    const time = timeFormat(navigation.heading?.timestamp ?? 0, format);
     setResult((prev) => {
-      return `${time} - Update location (${location.latitude}, ${location.longitude}, ${location.instrumentHorizontalAccuracyMeters}, ${location.instrumentSOGMetersPerSecond}, ${location.instrumentCOGTrue})\n${prev}`;
+      return `${time} - Update navigation (${JSON.stringify(
+        navigation
+      )},\n${prev}`;
     });
   });
 
@@ -137,7 +140,7 @@ export default function App() {
   };
 
   const configureHeadingAndroid = () => {
-    SyrfClient.configureHeading();
+    // SyrfClient.configureHeading();
   };
 
   const configureHeadingIOS = async () => {
@@ -194,9 +197,9 @@ export default function App() {
 
   const onUpdateNavigationClick = () => {
     SyrfClient.updateNavigationSettings({
-      enableLocation: enableLocation,
-      enableHeading: enableHeading,
-      enableDeviceInfo: enableDeviceInfo,
+      location: enableLocation,
+      heading: enableHeading,
+      deviceInfo: enableDeviceInfo,
     });
   };
 

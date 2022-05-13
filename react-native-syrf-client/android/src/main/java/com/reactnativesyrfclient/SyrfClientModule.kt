@@ -14,23 +14,23 @@ import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
 import com.syrf.device_info.data.SYRFDeviceInfoConfig
 import com.syrf.device_info.interfaces.SYRFDeviceInfo
-import com.syrf.location.data.SYRFRotationSensorData
 import com.syrf.location.configs.SYRFLocationConfig
 import com.syrf.location.configs.SYRFPermissionRequestConfig
 import com.syrf.location.configs.SYRFRotationConfig
+import com.syrf.location.data.SYRFLocationData
 import com.syrf.location.data.SYRFRotationData
+import com.syrf.location.data.SYRFRotationSensorData
+import com.syrf.location.interfaces.SYRFLocation
+import com.syrf.location.interfaces.SYRFRotationSensor
 import com.syrf.location.permissions.PermissionsManager
 import com.syrf.location.utils.Constants
+import com.syrf.location.utils.Constants.EXTRA_LOCATION
+import com.syrf.location.utils.Constants.EXTRA_ROTATION_SENSOR_DATA
 import com.syrf.location.utils.MissingLocationException
 import com.syrf.navigation.data.SYRFNavigationConfig
 import com.syrf.navigation.data.SYRFNavigationData
 import com.syrf.navigation.data.SYRFToggler
 import com.syrf.navigation.interfaces.SYRFNavigation
-import com.syrf.location.utils.Constants.EXTRA_LOCATION
-import com.syrf.location.interfaces.SYRFRotationSensor
-import com.syrf.location.data.SYRFLocationData
-import com.syrf.location.interfaces.SYRFLocation
-import com.syrf.location.utils.Constants.EXTRA_ROTATION_SENSOR_DATA
 import com.syrf.time.configs.SYRFTimeConfig
 import com.syrf.time.interfaces.SYRFTime
 
@@ -53,6 +53,8 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     const val UPDATE_LOCATION_EVENT = "UPDATE_LOCATION_EVENT"
     const val CURRENT_LOCATION_EVENT = "CURRENT_LOCATION_EVENT"
     const val UPDATE_HEADING_EVENT = "UPDATE_HEADING_EVENT"
+    const val UPDATE_NAVIGATION_EVENT = "UPDATE_NAVIGATION_EVENT"
+
     const val LOCATION_LAT = "latitude"
     const val LOCATION_LON = "longitude"
     const val LOCATION_HORZ_ACCURACY = "instrumentHorizontalAccuracyMeters"
@@ -63,6 +65,10 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     const val LOCATION_SPEED_ACCURACY = "instrumentSOGAccuracyMetersPerSecond"
     const val LOCATION_TIME = "timestamp"
     const val LOCATION_DESCRIPTION = "instrumentDescription"
+
+    const val BATTERY_LEVEL = "batteryLevel"
+    const val OS_VERSION = "osVersion"
+    const val DEVICE_MODEL = "deviceModel"
 
     const val HEADING_X = "x"
     const val HEADING_Y = "y"
@@ -93,6 +99,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     constants[UPDATE_LOCATION_EVENT] = UPDATE_LOCATION_EVENT
     constants[CURRENT_LOCATION_EVENT] = CURRENT_LOCATION_EVENT
     constants[UPDATE_HEADING_EVENT] = UPDATE_HEADING_EVENT
+    constants[UPDATE_NAVIGATION_EVENT] = UPDATE_NAVIGATION_EVENT
     return constants
   }
 
@@ -190,7 +197,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
         SYRFNavigationConfig(
           locationConfig = builder.set(),
           headingConfig = SYRFRotationConfig.Builder().set(),
-          deviceInfoConfig = SYRFDeviceInfoConfig(true)
+          deviceInfoConfig = SYRFDeviceInfoConfig(true),
         ), activity
       )
       promise.resolve(true)
@@ -404,23 +411,21 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
 
   private inner class NavigationBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-      intent.getParcelableExtra<SYRFNavigationData>(Constants.EXTRA_NAVIGATION)?.let {
-        it.location?.let { location ->
-          sendEvent(reactApplicationContext, UPDATE_LOCATION_EVENT, location.toMap())
+      val locationMap =
+        intent.getParcelableExtra<SYRFNavigationData>(Constants.EXTRA_NAVIGATION)?.location?.toMap()
+      val headingMap =
+        intent.getParcelableExtra<SYRFNavigationData>(Constants.EXTRA_NAVIGATION)?.sensorData?.let {
+          calculateOrientations(floatArrayOf(it.x, it.y, it.z, it.s))?.toMap()
         }
-        it.sensorData?.let { sensorData ->
-          calculateOrientations(
-            floatArrayOf(
-              sensorData.x,
-              sensorData.y,
-              sensorData.z,
-              sensorData.s
-            )
-          )?.let { rotationData ->
-            sendEvent(reactApplicationContext, UPDATE_HEADING_EVENT, rotationData.toMap())
-          }
-        }
-      }
+      val deviceInfoMap =
+        intent.getParcelableExtra<SYRFNavigationData>(Constants.EXTRA_NAVIGATION)?.deviceInfo?.toMap()
+
+      val params = Arguments.createMap()
+      params.putMap("location", locationMap)
+      params.putMap("heading", headingMap)
+      params.putMap("deviceInfo", deviceInfoMap)
+
+      sendEvent(reactApplicationContext, UPDATE_NAVIGATION_EVENT, params)
     }
   }
 
