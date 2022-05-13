@@ -200,6 +200,12 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
           deviceInfoConfig = SYRFDeviceInfoConfig(true),
         ), activity
       )
+
+      LocalBroadcastManager.getInstance(activity).registerReceiver(
+        navigationBroadcastReceiver,
+        IntentFilter(Constants.ACTION_NAVIGATION_BROADCAST)
+      )
+
       promise.resolve(true)
     }
   }
@@ -252,35 +258,19 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun startLocationUpdates() {
     currentActivity?.let { activity ->
-      if (usingNavigation) {
-        SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
-          if (error != null) {
-            if (error is MissingLocationException) {
-              waitingForLocationPermission = true
-              requestLocationPermission()
-            }
-            return@subscribeToNavigationUpdates
+      SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
+        if (error != null) {
+          if (error is MissingLocationException) {
+            waitingForLocationPermission = true
+            requestLocationPermission()
           }
+          return@subscribeToLocationUpdates
         }
-        LocalBroadcastManager.getInstance(activity).registerReceiver(
-          navigationBroadcastReceiver,
-          IntentFilter(Constants.ACTION_NAVIGATION_BROADCAST)
-        )
-      } else {
-        SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
-          if (error != null) {
-            if (error is MissingLocationException) {
-              waitingForLocationPermission = true
-              requestLocationPermission()
-            }
-            return@subscribeToLocationUpdates
-          }
-        }
-        LocalBroadcastManager.getInstance(activity).registerReceiver(
-          locationBroadcastReceiver,
-          IntentFilter(Constants.ACTION_LOCATION_BROADCAST)
-        )
       }
+      LocalBroadcastManager.getInstance(activity).registerReceiver(
+        locationBroadcastReceiver,
+        IntentFilter(Constants.ACTION_LOCATION_BROADCAST)
+      )
     }
   }
 
