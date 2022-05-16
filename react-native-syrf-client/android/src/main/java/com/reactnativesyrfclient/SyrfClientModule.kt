@@ -333,6 +333,15 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     }
   }
 
+  @ReactMethod
+    fun onAppMoveToForeground() {
+      currentActivity?.let {
+        if (usingNavigation) {
+          SYRFNavigation.onAppMoveToForeground(it)
+        }
+      }
+    }
+
   private fun requestLocationPermission() {
     currentActivity?.let { activity ->
       val config =
