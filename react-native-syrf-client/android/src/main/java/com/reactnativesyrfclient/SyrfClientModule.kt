@@ -265,6 +265,44 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun getCurrentNavigation(params: ReadableMap, promise: Promise) {
+    currentActivity?.let { activity ->
+      val location = getBooleanOrNull(params, KEY_LOCATION)
+      val heading = getBooleanOrNull(params, KEY_HEADING)
+      val deviceInfo = getBooleanOrNull(params, KEY_DEVICE_INFO)
+
+      val toggler = SYRFToggler(
+        location = location,
+        heading = heading,
+        deviceInfo = deviceInfo
+      )
+      SYRFNavigation.getCurrentNavigation(toggler, activity) { navigationData, error ->
+        if (error != null) {
+          if (error is MissingLocationException) {
+            waitingForLocationPermission = true
+            requestLocationPermission()
+          }
+        } else {
+          navigationData?.let {
+            val locationMap = navigationData.location?.toMap()
+            val headingMap =
+              navigationData.sensorData?.let {
+                calculateOrientations(floatArrayOf(it.x, it.y, it.z, it.s))?.toMap()
+              }
+            val deviceInfoMap = navigationData.deviceInfo?.toMap()
+
+            val navigationDataParams = Arguments.createMap()
+            navigationDataParams.putMap("location", locationMap)
+            navigationDataParams.putMap("heading", headingMap)
+            navigationDataParams.putMap("deviceInfo", deviceInfoMap)
+            sendEvent(reactApplicationContext, UPDATE_NAVIGATION_EVENT, navigationDataParams)
+          }
+        }
+      }
+    }
+  }
+
+  @ReactMethod
   fun startLocationUpdates() {
     currentActivity?.let { activity ->
       SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
@@ -286,31 +324,16 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun getCurrentLocation() {
     currentActivity?.let { activity ->
-      if (usingNavigation) {
-        SYRFNavigation.getCurrentPosition(activity) { location, error ->
-          if (error != null) {
-            if (error is MissingLocationException) {
-              waitingForCurrentLocationPermission = true
-              requestLocationPermission()
-            }
-            return@getCurrentPosition
+      SYRFLocation.getCurrentPosition(activity) { location, error ->
+        if (error != null) {
+          if (error is MissingLocationException) {
+            waitingForCurrentLocationPermission = true
+            requestLocationPermission()
           }
-          location?.let {
-            sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, it.toMap())
-          }
+          return@getCurrentPosition
         }
-      } else {
-        SYRFLocation.getCurrentPosition(activity) { location, error ->
-          if (error != null) {
-            if (error is MissingLocationException) {
-              waitingForCurrentLocationPermission = true
-              requestLocationPermission()
-            }
-            return@getCurrentPosition
-          }
-          location?.let {
-            sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, it.toMap())
-          }
+        location?.let {
+          sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, it.toMap())
         }
       }
     }

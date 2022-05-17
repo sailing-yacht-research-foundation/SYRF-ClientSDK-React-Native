@@ -22,6 +22,7 @@ type SyrfClientType = {
   getBatteryLevel(): Promise<number>;
   getPhoneModel(): Promise<string>;
   getOsVersion(): Promise<string>;
+  getCurrentNavigation(options?: any): Promise<any>;
 
   // Android only
   onAppMoveToBackground(): void;
@@ -43,8 +44,6 @@ type SyrfClientType = {
   configureHeading(options?: SYRFHeadingConfig): Promise<any>;
   startHeadingUpdates(): void;
   stopHeadingUpdates(): void;
-
-  getCurrentNavigation(options?: any): Promise<any>;
 };
 
 export const {

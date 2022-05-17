@@ -149,5 +149,5 @@ dependencies {
   implementation 'io.syrf:syrf-device-info:1.0.1'
   implementation 'io.syrf:syrf-geospatial:1.0.8'
   implementation 'io.syrf:syrf-time:1.0.4'
-  implementation 'io.syrf:syrf-navigation:1.0.2'
+  implementation 'io.syrf:syrf-navigation:1.0.3'
 }
