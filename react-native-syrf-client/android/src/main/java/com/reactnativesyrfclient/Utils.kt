@@ -18,6 +18,10 @@ fun getIntOrNull(map: ReadableMap?, key: String): Int? {
   return if (map?.hasKey(key) == true) map.getInt(key) else null
 }
 
+fun getIntOrDefault(map: ReadableMap?, key: String, defaultValue: Int): Int {
+  return if (map?.hasKey(key) == true) map.getInt(key) else defaultValue
+}
+
 fun getLongOrNull(map: ReadableMap?, key: String): Long? {
   return if (map?.hasKey(key) == true) map.getInt(key).toLong() else null
 }

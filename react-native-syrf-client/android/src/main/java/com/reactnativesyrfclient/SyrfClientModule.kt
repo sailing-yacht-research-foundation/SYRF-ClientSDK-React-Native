@@ -39,16 +39,17 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
 
   companion object {
     const val KEY_UPDATE_INTERVAL = "updateInterval"
-    const val KEY_MAX_LOCATION_ACCURACY = "maximumLocationAccuracy"
+    const val KEY_MAX_LOCATION_ACCURACY = "desiredAccuracy"
+
     const val KEY_PERMISSION_REQUEST_CONFIG = "permissionRequestConfig"
     const val KEY_PERMISSION_REQUEST_TITLE = "title"
     const val KEY_PERMISSION_REQUEST_MESSAGE = "message"
     const val KEY_PERMISSION_REQUEST_OK_BTN = "okButton"
     const val KEY_PERMISSION_REQUEST_CANCEL_BTN = "cancelButton"
 
-    const val KEY_ENABLE_LOCATION = "location"
-    const val KEY_ENABLE_HEADING = "heading"
-    const val KEY_ENABLE_DEVICE_INFO = "deviceInfo"
+    const val KEY_LOCATION = "location"
+    const val KEY_HEADING = "heading"
+    const val KEY_DEVICE_INFO = "deviceInfo"
 
     const val UPDATE_LOCATION_EVENT = "UPDATE_LOCATION_EVENT"
     const val CURRENT_LOCATION_EVENT = "CURRENT_LOCATION_EVENT"
@@ -77,6 +78,9 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     const val HEADING_TIME = "timestamp"
 
     const val REQUEST_PERMISSION_CODE = 1
+
+    const val THROTTLE_FOREGROUND_DELAY = "throttleForegroundDelay"
+    const val THROTTLE_BACKGROUND_DELAY = "throttleBackgroundDelay"
   }
 
   private val locationBroadcastReceiver = LocationBroadcastReceiver()
@@ -183,23 +187,28 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     currentActivity?.let { activity ->
       usingNavigation = true
       val builder = SYRFLocationConfig.Builder()
-      getLongOrNull(params, KEY_UPDATE_INTERVAL)?.let {
+
+      val locationParams = getMapOrNull(params, KEY_LOCATION)
+
+      getLongOrNull(locationParams, KEY_UPDATE_INTERVAL)?.let {
         builder.updateInterval(it)
       }
-      getIntOrNull(params, KEY_MAX_LOCATION_ACCURACY)?.let {
+      getIntOrNull(locationParams, KEY_MAX_LOCATION_ACCURACY)?.let {
         builder.maximumLocationAccuracy(it)
       }
-      getMapOrNull(params, KEY_PERMISSION_REQUEST_CONFIG)?.let { permissionRequestParams ->
+      getMapOrNull(locationParams, KEY_PERMISSION_REQUEST_CONFIG)?.let { permissionRequestParams ->
         permissionRequestConfig = getSYRFPermissionRequestConfig(permissionRequestParams)
       }
 
-      SYRFNavigation.configure(
-        SYRFNavigationConfig(
-          locationConfig = builder.set(),
-          headingConfig = SYRFRotationConfig.Builder().set(),
-          deviceInfoConfig = SYRFDeviceInfoConfig(true),
-        ), activity
+      val navigationConfig = SYRFNavigationConfig(
+        locationConfig = builder.set(),
+        headingConfig = SYRFRotationConfig.Builder().set(),
+        deviceInfoConfig = SYRFDeviceInfoConfig(true),
+        throttleForegroundDelay = getIntOrDefault(params, THROTTLE_FOREGROUND_DELAY, 1000),
+        throttleBackgroundDelay = getIntOrDefault(params, THROTTLE_BACKGROUND_DELAY, 2000),
       )
+
+      SYRFNavigation.configure(navigationConfig, activity)
 
       LocalBroadcastManager.getInstance(activity).registerReceiver(
         navigationBroadcastReceiver,
@@ -235,9 +244,9 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   @ReactMethod
   fun updateNavigationSettings(params: ReadableMap, promise: Promise) {
     currentActivity?.let { activity ->
-      val location = getBooleanOrNull(params, KEY_ENABLE_LOCATION)
-      val heading = getBooleanOrNull(params, KEY_ENABLE_HEADING)
-      val deviceInfo = getBooleanOrNull(params, KEY_ENABLE_DEVICE_INFO)
+      val location = getBooleanOrNull(params, KEY_LOCATION)
+      val heading = getBooleanOrNull(params, KEY_HEADING)
+      val deviceInfo = getBooleanOrNull(params, KEY_DEVICE_INFO)
 
       val toggler = SYRFToggler(
         location = location,

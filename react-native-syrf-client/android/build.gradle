@@ -145,9 +145,9 @@ dependencies {
   // implementation files('./libs/syrf-geospatial-release.aar')
   // implementation files('./libs/syrf-device-info-release.aar')
 
-  implementation 'io.syrf:syrf-location:1.0.17'
+  implementation 'io.syrf:syrf-location:1.0.18'
   implementation 'io.syrf:syrf-device-info:1.0.1'
   implementation 'io.syrf:syrf-geospatial:1.0.8'
   implementation 'io.syrf:syrf-time:1.0.4'
-  implementation 'io.syrf:syrf-navigation:1.0.1'
+  implementation 'io.syrf:syrf-navigation:1.0.2'
 }

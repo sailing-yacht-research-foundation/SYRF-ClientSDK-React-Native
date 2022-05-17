@@ -25,6 +25,7 @@ type SyrfClientType = {
 
   // Android only
   onAppMoveToBackground(): void;
+  onAppMoveToForeground(): void;
 
   // iOS only
   enableBatteryMonitoring(): void;
