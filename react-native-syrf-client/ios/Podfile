@@ -16,5 +16,6 @@ target 'SyrfClient' do
   
   pod 'SYRFLocation'
   pod 'SYRFDeviceInfo'
+  pod 'SYRFNavigation'
 
 end

@@ -12,6 +12,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.PermissionAwareActivity
 import com.facebook.react.modules.core.PermissionListener
+import com.syrf.device_info.data.SYRFDeviceInfoConfig
 import com.syrf.device_info.interfaces.SYRFDeviceInfo
 import com.syrf.location.configs.SYRFLocationConfig
 import com.syrf.location.configs.SYRFPermissionRequestConfig
@@ -26,6 +27,10 @@ import com.syrf.location.utils.Constants
 import com.syrf.location.utils.Constants.EXTRA_LOCATION
 import com.syrf.location.utils.Constants.EXTRA_ROTATION_SENSOR_DATA
 import com.syrf.location.utils.MissingLocationException
+import com.syrf.navigation.data.SYRFNavigationConfig
+import com.syrf.navigation.data.SYRFNavigationData
+import com.syrf.navigation.data.SYRFToggler
+import com.syrf.navigation.interfaces.SYRFNavigation
 import com.syrf.time.configs.SYRFTimeConfig
 import com.syrf.time.interfaces.SYRFTime
 
@@ -34,16 +39,23 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
 
   companion object {
     const val KEY_UPDATE_INTERVAL = "updateInterval"
-    const val KEY_MAX_LOCATION_ACCURACY = "maximumLocationAccuracy"
+    const val KEY_MAX_LOCATION_ACCURACY = "desiredAccuracy"
+
     const val KEY_PERMISSION_REQUEST_CONFIG = "permissionRequestConfig"
     const val KEY_PERMISSION_REQUEST_TITLE = "title"
     const val KEY_PERMISSION_REQUEST_MESSAGE = "message"
     const val KEY_PERMISSION_REQUEST_OK_BTN = "okButton"
     const val KEY_PERMISSION_REQUEST_CANCEL_BTN = "cancelButton"
 
+    const val KEY_LOCATION = "location"
+    const val KEY_HEADING = "heading"
+    const val KEY_DEVICE_INFO = "deviceInfo"
+
     const val UPDATE_LOCATION_EVENT = "UPDATE_LOCATION_EVENT"
     const val CURRENT_LOCATION_EVENT = "CURRENT_LOCATION_EVENT"
     const val UPDATE_HEADING_EVENT = "UPDATE_HEADING_EVENT"
+    const val UPDATE_NAVIGATION_EVENT = "UPDATE_NAVIGATION_EVENT"
+
     const val LOCATION_LAT = "latitude"
     const val LOCATION_LON = "longitude"
     const val LOCATION_HORZ_ACCURACY = "instrumentHorizontalAccuracyMeters"
@@ -55,6 +67,10 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     const val LOCATION_TIME = "timestamp"
     const val LOCATION_DESCRIPTION = "instrumentDescription"
 
+    const val BATTERY_LEVEL = "batteryLevel"
+    const val OS_VERSION = "osVersion"
+    const val DEVICE_MODEL = "deviceModel"
+
     const val HEADING_X = "x"
     const val HEADING_Y = "y"
     const val HEADING_Z = "z"
@@ -62,14 +78,20 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     const val HEADING_TIME = "timestamp"
 
     const val REQUEST_PERMISSION_CODE = 1
+
+    const val THROTTLE_FOREGROUND_DELAY = "throttleForegroundDelay"
+    const val THROTTLE_BACKGROUND_DELAY = "throttleBackgroundDelay"
   }
 
   private val locationBroadcastReceiver = LocationBroadcastReceiver()
   private val headingBroadcastReceiver = HeadingBroadcastReceiver()
+  private val navigationBroadcastReceiver = NavigationBroadcastReceiver()
   private var permissionRequestConfig: SYRFPermissionRequestConfig? = null
 
   private var waitingForLocationPermission = false
   private var waitingForCurrentLocationPermission = false
+
+  private var usingNavigation = false
 
   private val rotationMatrix = FloatArray(9)
   private val orientation = FloatArray(3)
@@ -81,6 +103,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     constants[UPDATE_LOCATION_EVENT] = UPDATE_LOCATION_EVENT
     constants[CURRENT_LOCATION_EVENT] = CURRENT_LOCATION_EVENT
     constants[UPDATE_HEADING_EVENT] = UPDATE_HEADING_EVENT
+    constants[UPDATE_NAVIGATION_EVENT] = UPDATE_NAVIGATION_EVENT
     return constants
   }
 
@@ -94,7 +117,19 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
         permissions,
         successCallback = {
           if (waitingForLocationPermission) {
-            SYRFLocation.subscribeToLocationUpdates(activity)
+            if (usingNavigation) {
+              SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
+                if (error != null) {
+                  if (error is MissingLocationException) {
+                    waitingForLocationPermission = true
+                    requestLocationPermission()
+                  }
+                  return@subscribeToNavigationUpdates
+                }
+              }
+            } else {
+              SYRFLocation.subscribeToLocationUpdates(activity)
+            }
           }
           waitingForLocationPermission = false
           if (waitingForCurrentLocationPermission) {
@@ -148,8 +183,41 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun configureNavigation(params: ReadableMap, promise: Promise) {
+    currentActivity?.let { activity ->
+      usingNavigation = true
+      val builder = SYRFLocationConfig.Builder()
+
+      val locationParams = getMapOrNull(params, KEY_LOCATION)
+
+      getLongOrNull(locationParams, KEY_UPDATE_INTERVAL)?.let {
+        builder.updateInterval(it)
+      }
+      getIntOrNull(locationParams, KEY_MAX_LOCATION_ACCURACY)?.let {
+        builder.maximumLocationAccuracy(it)
+      }
+      getMapOrNull(locationParams, KEY_PERMISSION_REQUEST_CONFIG)?.let { permissionRequestParams ->
+        permissionRequestConfig = getSYRFPermissionRequestConfig(permissionRequestParams)
+      }
+
+      val navigationConfig = SYRFNavigationConfig(
+        locationConfig = builder.set(),
+        headingConfig = SYRFRotationConfig.Builder().set(),
+        deviceInfoConfig = SYRFDeviceInfoConfig(true),
+        throttleForegroundDelay = getIntOrDefault(params, THROTTLE_FOREGROUND_DELAY, 1000),
+        throttleBackgroundDelay = getIntOrDefault(params, THROTTLE_BACKGROUND_DELAY, 2000),
+      )
+
+      SYRFNavigation.configure(navigationConfig, activity)
+
+      promise.resolve(true)
+    }
+  }
+
+  @ReactMethod
   fun configure(params: ReadableMap, promise: Promise) {
     currentActivity?.let { activity ->
+      usingNavigation = false
       val builder = SYRFLocationConfig.Builder()
       getLongOrNull(params, KEY_UPDATE_INTERVAL)?.let {
         builder.updateInterval(it)
@@ -165,6 +233,76 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
       SYRFLocation.configure(builder.set(), activity)
       SYRFRotationSensor.configure(SYRFRotationConfig.Builder().set(), activity)
       promise.resolve(true)
+    }
+  }
+
+  @ReactMethod
+  fun updateNavigationSettings(params: ReadableMap, promise: Promise) {
+    currentActivity?.let { activity ->
+      val location = getBooleanOrNull(params, KEY_LOCATION)
+      val heading = getBooleanOrNull(params, KEY_HEADING)
+      val deviceInfo = getBooleanOrNull(params, KEY_DEVICE_INFO)
+
+      val toggler = SYRFToggler(
+        location = location,
+        heading = heading,
+        deviceInfo = deviceInfo
+      )
+      SYRFNavigation.updateNavigationSettings(toggler, activity) { _, error ->
+        if (error != null) {
+          if (error is MissingLocationException) {
+            waitingForLocationPermission = true
+            requestLocationPermission()
+          }
+        }
+      }
+
+      if (location == true || heading == true) {
+        LocalBroadcastManager.getInstance(activity).registerReceiver(
+          navigationBroadcastReceiver,
+          IntentFilter(Constants.ACTION_NAVIGATION_BROADCAST)
+        )
+      } else {
+        LocalBroadcastManager.getInstance(activity).unregisterReceiver(navigationBroadcastReceiver)
+      }
+    }
+  }
+
+  @ReactMethod
+  fun getCurrentNavigation(params: ReadableMap, promise: Promise) {
+    currentActivity?.let { activity ->
+      val location = getBooleanOrNull(params, KEY_LOCATION)
+      val heading = getBooleanOrNull(params, KEY_HEADING)
+      val deviceInfo = getBooleanOrNull(params, KEY_DEVICE_INFO)
+
+      val toggler = SYRFToggler(
+        location = location,
+        heading = heading,
+        deviceInfo = deviceInfo
+      )
+      SYRFNavigation.getCurrentNavigation(toggler, activity) { navigationData, error ->
+        if (error != null) {
+          if (error is MissingLocationException) {
+            waitingForLocationPermission = true
+            requestLocationPermission()
+          }
+        } else {
+          navigationData?.let {
+            val locationMap = navigationData.location?.toMap()
+            val headingMap =
+              navigationData.sensorData?.let {
+                calculateOrientations(floatArrayOf(it.x, it.y, it.z, it.s))?.toMap()
+              }
+            val deviceInfoMap = navigationData.deviceInfo?.toMap()
+
+            val navigationDataParams = Arguments.createMap()
+            navigationDataParams.putMap("location", locationMap)
+            navigationDataParams.putMap("heading", headingMap)
+            navigationDataParams.putMap("deviceInfo", deviceInfoMap)
+            sendEvent(reactApplicationContext, UPDATE_NAVIGATION_EVENT, navigationDataParams)
+          }
+        }
+      }
     }
   }
 
@@ -198,8 +336,8 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
           }
           return@getCurrentPosition
         }
-        if (location != null) {
-          sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, location.toMap())
+        location?.let {
+          sendEvent(reactApplicationContext, CURRENT_LOCATION_EVENT, it.toMap())
         }
       }
     }
@@ -207,16 +345,38 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun stopLocationUpdates() {
-    SYRFLocation.unsubscribeToLocationUpdates()
-    currentActivity?.let {
-      LocalBroadcastManager.getInstance(it).unregisterReceiver(locationBroadcastReceiver)
+    if (usingNavigation) {
+      currentActivity?.let {
+        SYRFNavigation.unsubscribeToNavigationUpdates(it)
+        LocalBroadcastManager.getInstance(it).unregisterReceiver(navigationBroadcastReceiver)
+      }
+    } else {
+      SYRFLocation.unsubscribeToLocationUpdates()
+      currentActivity?.let {
+        LocalBroadcastManager.getInstance(it).unregisterReceiver(locationBroadcastReceiver)
+      }
     }
   }
 
   @ReactMethod
   fun onAppMoveToBackground() {
-    currentActivity?.let { SYRFLocation.onStop(it) }
+    currentActivity?.let {
+      if (usingNavigation) {
+        SYRFNavigation.onAppMoveToBackground(it)
+      } else {
+        SYRFLocation.onStop(it)
+      }
+    }
   }
+
+  @ReactMethod
+    fun onAppMoveToForeground() {
+      currentActivity?.let {
+        if (usingNavigation) {
+          SYRFNavigation.onAppMoveToForeground(it)
+        }
+      }
+    }
 
   private fun requestLocationPermission() {
     currentActivity?.let { activity ->
@@ -281,6 +441,26 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
             sendEvent(reactApplicationContext, UPDATE_HEADING_EVENT, rotationData.toMap())
           }
         }
+    }
+  }
+
+  private inner class NavigationBroadcastReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      val locationMap =
+        intent.getParcelableExtra<SYRFNavigationData>(Constants.EXTRA_NAVIGATION)?.location?.toMap()
+      val headingMap =
+        intent.getParcelableExtra<SYRFNavigationData>(Constants.EXTRA_NAVIGATION)?.sensorData?.let {
+          calculateOrientations(floatArrayOf(it.x, it.y, it.z, it.s))?.toMap()
+        }
+      val deviceInfoMap =
+        intent.getParcelableExtra<SYRFNavigationData>(Constants.EXTRA_NAVIGATION)?.deviceInfo?.toMap()
+
+      val params = Arguments.createMap()
+      params.putMap("location", locationMap)
+      params.putMap("heading", headingMap)
+      params.putMap("deviceInfo", deviceInfoMap)
+
+      sendEvent(reactApplicationContext, UPDATE_NAVIGATION_EVENT, params)
     }
   }
 

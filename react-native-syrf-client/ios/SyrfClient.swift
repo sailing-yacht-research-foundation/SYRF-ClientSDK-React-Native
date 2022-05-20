@@ -1,5 +1,6 @@
 import SYRFLocation
 import SYRFDeviceInfo
+import SYRFNavigation
 import CoreLocation
 import React
 
@@ -8,18 +9,20 @@ let FAILED_LOCATION_EVENT       = "FAILED_LOCATION_EVENT"
 let CURRENT_LOCATION_EVENT      = "CURRENT_LOCATION_EVENT"
 let UPDATE_HEADING_EVENT        = "UPDATE_HEADING_EVENT"
 let FAILED_HEADING_EVENT        = "FAILED_HEADING_EVENT"
+let UPDATE_NAVIGATION_EVENT     = "UPDATE_NAVIGATION_EVENT"
+let FAILED_NAVIGATION_EVENT     = "FAILED_NAVIGATION_EVENT"
 
 @objc(SyrfClient)
 class SyrfClient: RCTEventEmitter {
     
     // MARK: - Stored Properties
-    
+    private var navigationManager: NavigationManager!
     private var locationManager: LocationManager!
     private var headingManager: HeadingManager!
     private var permissionsManager: PermissionsManager!
     private var deviceInfoManager: DeviceInfoManager!
-    private var batteryManager: BatteryManager!
     
+    private var configureNavigationBlock: (() -> ())? = nil
     private var callbackAuthorization: RCTPromiseResolveBlock?
     private var callbackAccuracy: RCTPromiseResolveBlock?
     
@@ -28,14 +31,15 @@ class SyrfClient: RCTEventEmitter {
     // MARK: - Lifecycle Methods
     
     override init() {
+        self.navigationManager = NavigationManager()
         self.locationManager = LocationManager()
         self.headingManager = HeadingManager()
         self.permissionsManager = PermissionsManager()
         self.deviceInfoManager = DeviceInfoManager()
-        self.batteryManager = BatteryManager()
         
         super.init()
         
+        self.navigationManager.delegate = self
         self.locationManager.delegate = self
         self.headingManager.delegate = self
         self.permissionsManager.delegate = self
@@ -53,6 +57,8 @@ class SyrfClient: RCTEventEmitter {
             FAILED_LOCATION_EVENT: FAILED_LOCATION_EVENT,
             UPDATE_HEADING_EVENT: UPDATE_HEADING_EVENT,
             FAILED_HEADING_EVENT: FAILED_HEADING_EVENT,
+            UPDATE_NAVIGATION_EVENT: UPDATE_NAVIGATION_EVENT,
+            FAILED_NAVIGATION_EVENT: FAILED_NAVIGATION_EVENT,
         ];
     }
     
@@ -81,6 +87,8 @@ class SyrfClient: RCTEventEmitter {
             FAILED_LOCATION_EVENT,
             UPDATE_HEADING_EVENT,
             FAILED_HEADING_EVENT,
+            UPDATE_NAVIGATION_EVENT,
+            FAILED_NAVIGATION_EVENT,
         ];
     }
 
@@ -88,17 +96,17 @@ class SyrfClient: RCTEventEmitter {
 
     @objc(enableBatteryMonitoring)
     func enableBatteryMonitoring() {
-        self.batteryManager.enableBatteryMonitoring()
+        self.deviceInfoManager.startDeviceInfoUpdates()
     }
 
     @objc(disableBatteryMonitoring)
     func disableBatteryMonitoring() {
-        self.batteryManager.disableBatteryMonitoring()
+        self.deviceInfoManager.stopDeviceInfoUpdates()
     }
 
     @objc(getBatteryLevel:failure:)
     func getBatteryLevel(success: @escaping RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
-        success(self.batteryManager.getBatteryLevel())
+        success(self.deviceInfoManager.getBatteryLevel())
     }
 
     @objc(getPhoneModel:failure:)
@@ -146,26 +154,11 @@ class SyrfClient: RCTEventEmitter {
     
     @objc(configure:success:failure:)
     func configure(configuration: [String: Any], success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
-        let options = LocationManagerConfig()
+        let options = getLocationManagerConfig(configuration)
         
-        guard let activityType = configuration["activity"] as? String,
-              let distanceFilter = configuration["distanceFilter"] as? Double,
-              let desiredAccuracy = configuration["desiredAccuracy"] as? String else {
+        guard let options = options else {
             failure("0", "Invalid parameters", nil)
             return
-        }
-        
-        options.activityType = self.getActivityType(activity: activityType)
-        options.distanceFilter = self.getDistanceFilter(distance: distanceFilter)
-        options.desiredAccuracy = self.getAccuracyFilter(accuracy: desiredAccuracy)
-        if let pauseUpdatesAutomatically = configuration["pauseUpdatesAutomatically"] as? Bool {
-            options.pauseUpdatesAutomatically = pauseUpdatesAutomatically
-        }
-        if let allowIndicatorInBackground = configuration["allowIndicatorInBackground"] as? Bool {
-            options.allowIndicatorInBackground = allowIndicatorInBackground
-        }
-        if let allowUpdatesInBackground = configuration["allowUpdatesInBackground"] as? Bool {
-            options.allowUpdatesInBackground = allowUpdatesInBackground
         }
         
         self.locationManager.configure(options)
@@ -174,17 +167,63 @@ class SyrfClient: RCTEventEmitter {
     
     @objc(configureHeading:success:failure:)
     func configureHeading(configuration: [String: Any], success: RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
-        let options = HeadingManagerConfig()
+        let options = getHeadingManagerConfig(configuration)
         
-        if let orientation = configuration["orientation"] as? String {
-            options.headingOrientation = self.getHeadingOrientation(orientation: orientation)
-        }
-        if let distanceFilter = configuration["distanceFilter"] as? Double {
-            options.headingFilter = self.getHeadingDistanceFilter(distance: distanceFilter)
+        guard let options = options else {
+            failure("0", "Invalid parameters", nil)
+            return
         }
         
         self.headingManager.configure(options)
         success(true)
+    }
+    
+    @objc(configureNavigation:success:failure:)
+    func configureNavigation(configuration: [String: Any], success: @escaping RCTPromiseResolveBlock, failure: RCTPromiseRejectBlock) {
+        let options = getNavigationManagerConfig(configuration)
+        
+        guard let options = options else {
+            failure("0", "Invalid parameters", nil)
+            return
+        }
+        
+        self.configureNavigationBlock = {
+            self.configureNavigationBlock = nil
+            self.navigationManager.configure(options)
+            success(true)
+        }
+        
+        let auth = self.permissionsManager.checkAuthorization()
+        
+        if let location = options.locationConfig,
+            (location.authorizationLevel == .always && auth != .authorizedAlways) ||
+            (location.authorizationLevel == .whenInUse && auth != .authorizedWhenInUse) {
+            self.permissionsManager.requestAuthorization(location.authorizationLevel)
+        } else {
+            self.configureNavigationBlock?()
+        }
+    }
+    
+    @objc(getCurrentNavigation:success:failure:)
+    func getCurrentNavigation(options: [String: Any]?, success: @escaping RCTPromiseResolveBlock, failure: @escaping RCTPromiseRejectBlock) {
+        self.navigationManager.getCurrentNavigation(options) { (navigation, error) in
+            if let navigation = navigation {
+                success(self.getNavigationDictionary(navigation))
+            } else {
+                failure("0", "Failed to get navigation", nil)
+            }
+        }
+    }
+    
+    @objc(updateNavigationSettings:success:failure:)
+    func updateNavigationSettings(options: [String: Any]?, success: @escaping RCTPromiseResolveBlock, failure: @escaping RCTPromiseRejectBlock) {
+        self.navigationManager.updateNavigationSettings(options) { (error) in
+            if let _ = error {
+                failure("0", "Failed to update navigation", nil)
+            } else {
+                success(true)
+            }
+        }
     }
     
     @objc(startLocationUpdates)
@@ -212,6 +251,89 @@ class SyrfClient: RCTEventEmitter {
         self.headingManager.stopHeadingUpdates()
     }
     
+    func getLocationManagerConfig(_ configuration: Any?) -> LocationManagerConfig? {
+        guard let configuration = configuration as? [String: Any],
+              let activityType = configuration["activity"] as? String,
+              let distanceFilter = configuration["distanceFilter"] as? Double,
+              let desiredAccuracy = configuration["desiredAccuracy"] as? String else {
+            return nil
+        }
+        
+        let options = LocationManagerConfig()
+        options.activityType = self.getActivityType(activity: activityType)
+        options.distanceFilter = self.getDistanceFilter(distance: distanceFilter)
+        options.desiredAccuracy = self.getAccuracyFilter(accuracy: desiredAccuracy)
+        if let pauseUpdatesAutomatically = configuration["pauseUpdatesAutomatically"] as? Bool {
+            options.pauseUpdatesAutomatically = pauseUpdatesAutomatically
+        }
+        if let allowIndicatorInBackground = configuration["allowIndicatorInBackground"] as? Bool {
+            options.allowIndicatorInBackground = allowIndicatorInBackground
+        }
+        if let allowUpdatesInBackground = configuration["allowUpdatesInBackground"] as? Bool {
+            options.allowUpdatesInBackground = allowUpdatesInBackground
+        }
+        if let permissions = configuration["permissions"] as? String {
+            options.authorizationLevel = permissions.lowercased() == "always" ? .always : .whenInUse
+        }
+        if let enabled = configuration["enabled"] as? Bool {
+            options.enabled = enabled
+        }
+        
+        return options
+    }
+    
+    func getHeadingManagerConfig(_ configuration: Any?) -> HeadingManagerConfig? {
+        guard let configuration = configuration as? [String: Any] else {
+            return nil
+        }
+        
+        let options = HeadingManagerConfig()
+        if let orientation = configuration["orientation"] as? String {
+            options.headingOrientation = self.getHeadingOrientation(orientation: orientation)
+        }
+        if let headingFilter = configuration["headingFilter"] as? Double {
+            options.headingFilter = self.getHeadingDistanceFilter(distance: headingFilter)
+        }
+        if let enabled = configuration["enabled"] as? Bool {
+            options.enabled = enabled
+        }
+        
+        return options
+    }
+    
+    func getDeviceInfoManagerConfig(_ configuration: Any?) -> DeviceInfoManagerConfig? {
+        guard let configuration = configuration as? [String: Any] else {
+            return nil
+        }
+        
+        let options = DeviceInfoManagerConfig()
+        
+        if let enabled = configuration["enabled"] as? Bool {
+            options.enabled = enabled
+        }
+        
+        return options
+    }
+    
+    func getNavigationManagerConfig(_ configuration: Any?) -> NavigationManagerConfig? {
+        guard let configuration = configuration as? [String: Any] else {
+            return nil
+        }
+        
+        let options = NavigationManagerConfig()
+        
+        options.locationConfig = getLocationManagerConfig(configuration["location"])
+        options.headingConfig = getHeadingManagerConfig(configuration["heading"])
+        options.deviceInfoConfig = getDeviceInfoManagerConfig(configuration["deviceInfo"])
+        if let val = configuration["throttleForegroundDelay"] as? Double {
+            options.throttleForegroundDelay = val
+        }
+        if let val = configuration["throttleBackgroundDelay"] as? Double {
+            options.throttleBackgroundDelay = val
+        }
+        
+        return options
+    }
 }
 
 // MARK: - Extension for LocationManager Delegate
@@ -250,6 +372,7 @@ extension SyrfClient: PermissionsDelegate {
             callback(self.getAuthorizationStatus(status))
             self.callbackAuthorization = nil
         }
+        self.configureNavigationBlock?()
     }
     
     func accuracyUpdated(_ status: PermissionsAccuracy) {
@@ -257,6 +380,18 @@ extension SyrfClient: PermissionsDelegate {
             callback(self.getAccuracyStatus(status))
             self.callbackAccuracy = nil
         }
+    }
+}
+
+// MARK: - Extension for NavigationManager Delegate
+extension SyrfClient: NavigationDelegate {
+    
+    func navigationUpdated(_ navigation: SYRFNavigation) {
+        self.sendEvent(eventName: UPDATE_NAVIGATION_EVENT, data: self.getNavigationDictionary(navigation))
+    }
+    
+    func navigationFailed(_ error: Error) {
+        self.sendEvent(eventName: FAILED_NAVIGATION_EVENT, data: ["error": error.localizedDescription])
     }
 }
 
@@ -382,6 +517,33 @@ extension SyrfClient {
         rawDictionary["z"] = heading.rawData.z
         dictionary["rawData"] = rawDictionary
         dictionary["timestamp"] = floor(heading.timestamp.timeIntervalSince1970 * 1000)
+        
+        return dictionary
+    }
+    
+    func getDeviceInfoDictionary(_ info: SYRFDeviceInfo) -> [String: Any] {
+        var dictionary = [String: Any]()
+        
+        dictionary["batteryLevel"] = info.batteryLevel
+        dictionary["osVersion"] = info.osVersion
+        dictionary["deviceModel"] = info.deviceModel
+        dictionary["timestamp"] = floor(info.timestamp.timeIntervalSince1970 * 1000)
+        
+        return dictionary
+    }
+    
+    func getNavigationDictionary(_ navigation: SYRFNavigation) -> [String: Any] {
+        var dictionary = [String: Any]()
+        
+        if let val = navigation.location {
+            dictionary["location"] = getLocationDictionary(val)
+        }
+        if let val = navigation.heading {
+            dictionary["heading"] = getHeadingDictionary(val)
+        }
+        if let val = navigation.deviceInfo {
+            dictionary["deviceInfo"] = getDeviceInfoDictionary(val)
+        }
         
         return dictionary
     }

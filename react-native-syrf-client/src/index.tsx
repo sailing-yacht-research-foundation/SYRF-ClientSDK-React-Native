@@ -6,21 +6,27 @@ import {
   LocationAccuracyStatusIOS,
   LocationAuthorizationStatusIOS,
   SYRFHeadingConfig,
+  SYRFNavigationConfig,
 } from './types';
 
 const { SyrfClient } = NativeModules;
 
 type SyrfClientType = {
   configure(options?: SYRFLocationConfig): Promise<any>;
+  configureNavigation(options?: SYRFNavigationConfig): Promise<any>;
+  updateNavigationSettings(options?: any): Promise<any>;
+
   startLocationUpdates(): void;
   stopLocationUpdates(): void;
   getCurrentLocation(): void;
   getBatteryLevel(): Promise<number>;
   getPhoneModel(): Promise<string>;
   getOsVersion(): Promise<string>;
+  getCurrentNavigation(options?: any): Promise<any>;
 
   // Android only
   onAppMoveToBackground(): void;
+  onAppMoveToForeground(): void;
 
   // iOS only
   enableBatteryMonitoring(): void;
@@ -46,6 +52,8 @@ export const {
   FAILED_LOCATION_EVENT,
   UPDATE_HEADING_EVENT,
   FAILED_HEADING_EVENT,
+  UPDATE_NAVIGATION_EVENT,
+  FAILED_NAVIGATION_EVENT,
 } = SyrfClient.getConstants();
 
 export default SyrfClient as SyrfClientType;
