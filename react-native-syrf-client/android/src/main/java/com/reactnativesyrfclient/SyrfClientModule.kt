@@ -210,11 +210,6 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
 
       SYRFNavigation.configure(navigationConfig, activity)
 
-      LocalBroadcastManager.getInstance(activity).registerReceiver(
-        navigationBroadcastReceiver,
-        IntentFilter(Constants.ACTION_NAVIGATION_BROADCAST)
-      )
-
       promise.resolve(true)
     }
   }
@@ -260,6 +255,15 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
             requestLocationPermission()
           }
         }
+      }
+
+      if (location == true || heading == true) {
+        LocalBroadcastManager.getInstance(activity).registerReceiver(
+          navigationBroadcastReceiver,
+          IntentFilter(Constants.ACTION_NAVIGATION_BROADCAST)
+        )
+      } else {
+        LocalBroadcastManager.getInstance(activity).unregisterReceiver(navigationBroadcastReceiver)
       }
     }
   }
