@@ -10,8 +10,8 @@ fun getStringOrNull(map: ReadableMap?, key: String): String? {
   return if (map?.hasKey(key) == true) map.getString(key) else null
 }
 
-fun getStringOrDefault(map: ReadableMap, key: String, default: String? = ""): String? {
-  return if (map.hasKey(key)) map.getString(key) else default
+fun getStringOrDefault(map: ReadableMap?, key: String, default: String? = ""): String? {
+  return if (map?.hasKey(key) == true) map.getString(key) else default
 }
 
 fun getIntOrNull(map: ReadableMap?, key: String): Int? {

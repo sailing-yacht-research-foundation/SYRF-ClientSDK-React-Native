@@ -39,6 +39,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
 
   companion object {
     const val KEY_UPDATE_INTERVAL = "updateInterval"
+    const val KEY_PROVIDER = "provider"
     const val KEY_MAX_LOCATION_ACCURACY = "desiredAccuracy"
 
     const val KEY_PERMISSION_REQUEST_CONFIG = "permissionRequestConfig"
@@ -198,6 +199,10 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
       }
       getMapOrNull(locationParams, KEY_PERMISSION_REQUEST_CONFIG)?.let { permissionRequestParams ->
         permissionRequestConfig = getSYRFPermissionRequestConfig(permissionRequestParams)
+      }
+
+      getStringOrDefault(locationParams, KEY_PROVIDER, "gps")?.let {
+        builder.provider(it)
       }
 
       val navigationConfig = SYRFNavigationConfig(
