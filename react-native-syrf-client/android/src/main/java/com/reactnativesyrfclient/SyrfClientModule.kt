@@ -1,11 +1,15 @@
 package com.reactnativesyrfclient
 
 import android.Manifest
+import android.app.Activity
+import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.hardware.SensorManager
+import android.net.Uri
+import android.provider.Settings
 import android.view.Display
 import android.view.Surface
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -33,6 +37,7 @@ import com.syrf.navigation.data.SYRFToggler
 import com.syrf.navigation.interfaces.SYRFNavigation
 import com.syrf.time.configs.SYRFTimeConfig
 import com.syrf.time.interfaces.SYRFTime
+
 
 class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext), PermissionListener {
@@ -79,6 +84,9 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     const val HEADING_TIME = "timestamp"
 
     const val REQUEST_PERMISSION_CODE = 1
+    const val REQUEST_PERMISSION_USING_NAVIGATION_CODE = 2
+    const val REQUEST_PERMISSION_LOCATION_UPDATE_CODE = 3
+    const val REQUEST_PERMISSION_CURRENT_LOCATION_CODE = 4
 
     const val THROTTLE_FOREGROUND_DELAY = "throttleForegroundDelay"
     const val THROTTLE_BACKGROUND_DELAY = "throttleBackgroundDelay"
@@ -88,9 +96,6 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   private val headingBroadcastReceiver = HeadingBroadcastReceiver()
   private val navigationBroadcastReceiver = NavigationBroadcastReceiver()
   private var permissionRequestConfig: SYRFPermissionRequestConfig? = null
-
-  private var waitingForLocationPermission = false
-  private var waitingForCurrentLocationPermission = false
 
   private var usingNavigation = false
 
@@ -108,6 +113,43 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     return constants
   }
 
+  private val mActivityEventListener: ActivityEventListener = object : BaseActivityEventListener() {
+    override fun onActivityResult(
+      activity: Activity,
+      requestCode: Int,
+      resultCode: Int,
+      intent: Intent
+    ) {
+      if (requestCode == REQUEST_PERMISSION_USING_NAVIGATION_CODE) {
+        SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
+          if (error != null) {
+            if (error is MissingLocationException) {
+              requestLocationPermission(requestCode)
+            }
+            return@subscribeToNavigationUpdates
+          }
+        }
+      }
+      if (requestCode == REQUEST_PERMISSION_LOCATION_UPDATE_CODE) {
+        SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
+          if (error != null) {
+            if (error is MissingLocationException) {
+              requestLocationPermission(requestCode)
+            }
+            return@subscribeToLocationUpdates
+          }
+        }
+      }
+      if (requestCode == REQUEST_PERMISSION_CURRENT_LOCATION_CODE) {
+        getCurrentLocation()
+      }
+    }
+  }
+
+  init {
+    reactContext.addActivityEventListener(mActivityEventListener)
+  }
+
   override fun onRequestPermissionsResult(
     requestCode: Int,
     permissions: Array<out String>,
@@ -117,34 +159,61 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
       PermissionsManager(activity).handleResults(
         permissions,
         successCallback = {
-          if (waitingForLocationPermission) {
-            if (usingNavigation) {
-              SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
-                if (error != null) {
-                  if (error is MissingLocationException) {
-                    waitingForLocationPermission = true
-                    requestLocationPermission()
-                  }
-                  return@subscribeToNavigationUpdates
+          if (requestCode == REQUEST_PERMISSION_USING_NAVIGATION_CODE) {
+            SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
+              if (error != null) {
+                if (error is MissingLocationException) {
+                  requestLocationPermission(requestCode)
                 }
+                return@subscribeToNavigationUpdates
               }
-            } else {
-              SYRFLocation.subscribeToLocationUpdates(activity)
             }
           }
-          waitingForLocationPermission = false
-          if (waitingForCurrentLocationPermission) {
+          if (requestCode == REQUEST_PERMISSION_LOCATION_UPDATE_CODE) {
+            SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
+              if (error != null) {
+                if (error is MissingLocationException) {
+                  requestLocationPermission(requestCode)
+                }
+                return@subscribeToLocationUpdates
+              }
+            }
+          }
+          if (requestCode == REQUEST_PERMISSION_CURRENT_LOCATION_CODE) {
             getCurrentLocation()
           }
-          waitingForCurrentLocationPermission = false
         },
-        exceptionCallback = {
-          waitingForLocationPermission = false
-        })
+        showRequestPermissionRationale = {
+          if (it == Manifest.permission.ACCESS_FINE_LOCATION) {
+            currentActivity?.let {
+              val alertDialogBuilder = AlertDialog.Builder(it)
+              alertDialogBuilder.setTitle("Permission")
+              alertDialogBuilder.setMessage("Please go to Permissions -> Location to enable \"Use precise location\".")
+              alertDialogBuilder.setCancelable(false)
+              alertDialogBuilder.setPositiveButton("OK") { dialog, _ ->
+                try {
+                  it.startActivityForResult(
+                    Intent().apply {
+                      action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                      data = Uri.fromParts("package", it.packageName, null)
+                    },
+                    requestCode
+                  )
+                } catch (e: Exception) {
+                }
+                dialog.dismiss()
+              }
+              alertDialogBuilder.show()
+            }
+          }
+        },
+        exceptionCallback = {},
+      )
       return true
     }
     return false
   }
+
 
   private fun getSYRFPermissionRequestConfig(permissionRequestParams: ReadableMap): SYRFPermissionRequestConfig? {
     currentActivity?.let { activity ->
@@ -256,8 +325,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
       SYRFNavigation.updateNavigationSettings(toggler, activity) { _, error ->
         if (error != null) {
           if (error is MissingLocationException) {
-            waitingForLocationPermission = true
-            requestLocationPermission()
+            requestLocationPermission(REQUEST_PERMISSION_USING_NAVIGATION_CODE)
           }
         }
       }
@@ -288,8 +356,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
       SYRFNavigation.getCurrentNavigation(toggler, activity) { navigationData, error ->
         if (error != null) {
           if (error is MissingLocationException) {
-            waitingForLocationPermission = true
-            requestLocationPermission()
+            requestLocationPermission(REQUEST_PERMISSION_CURRENT_LOCATION_CODE)
           }
         } else {
           navigationData?.let {
@@ -317,8 +384,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
       SYRFLocation.subscribeToLocationUpdates(activity) { _, error ->
         if (error != null) {
           if (error is MissingLocationException) {
-            waitingForLocationPermission = true
-            requestLocationPermission()
+            requestLocationPermission(REQUEST_PERMISSION_LOCATION_UPDATE_CODE)
           }
           return@subscribeToLocationUpdates
         }
@@ -336,8 +402,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
       SYRFLocation.getCurrentPosition(activity) { location, error ->
         if (error != null) {
           if (error is MissingLocationException) {
-            waitingForCurrentLocationPermission = true
-            requestLocationPermission()
+            requestLocationPermission(REQUEST_PERMISSION_CURRENT_LOCATION_CODE)
           }
           return@getCurrentPosition
         }
@@ -375,15 +440,15 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-    fun onAppMoveToForeground() {
-      currentActivity?.let {
-        if (usingNavigation) {
-          SYRFNavigation.onAppMoveToForeground(it)
-        }
+  fun onAppMoveToForeground() {
+    currentActivity?.let {
+      if (usingNavigation) {
+        SYRFNavigation.onAppMoveToForeground(it)
       }
     }
+  }
 
-  private fun requestLocationPermission() {
+  private fun requestLocationPermission(requestCode: Int) {
     currentActivity?.let { activity ->
       val config =
         permissionRequestConfig ?: SYRFPermissionRequestConfig.getDefault(activity)
@@ -395,7 +460,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
               Manifest.permission.ACCESS_FINE_LOCATION,
               Manifest.permission.ACCESS_COARSE_LOCATION
             ),
-            REQUEST_PERMISSION_CODE,
+            requestCode,
             this
           )
         },
@@ -502,4 +567,5 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
     }
     return null
   }
+
 }
