@@ -118,7 +118,7 @@ class SyrfClientModule(private val reactContext: ReactApplicationContext) :
       activity: Activity,
       requestCode: Int,
       resultCode: Int,
-      intent: Intent
+      intent: Intent?
     ) {
       if (requestCode == REQUEST_PERMISSION_USING_NAVIGATION_CODE) {
         SYRFNavigation.subscribeToNavigationUpdates(activity) { _, error ->
