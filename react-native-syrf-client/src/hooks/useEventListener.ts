@@ -1,17 +1,21 @@
 import { useEffect } from 'react';
-import { NativeEventEmitter, NativeModules } from 'react-native';
+import { EmitterSubscription, NativeEventEmitter, NativeModules } from 'react-native';
 
 export const useEventListener = (
   eventName: string,
-  listener: (...args: any[]) => any
+  listener: (...args: any[]) => any,
 ) => {
   useEffect(() => {
     const eventEmitter = new NativeEventEmitter(NativeModules.SyrfClient);
-    const eventListener = eventEmitter.addListener(eventName, listener);
-
+    let eventListener: EmitterSubscription;
+    if (eventName) {
+      eventListener = eventEmitter.addListener(eventName, listener);
+    }
     return () => {
       eventListener.remove();
-      eventEmitter.removeAllListeners(eventName);
+      if (eventName) {
+        eventEmitter.removeAllListeners(eventName);
+      }
     };
   }, [eventName, listener]);
 };
