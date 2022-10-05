@@ -11,6 +11,7 @@ export const useEventListener = (
 
     return () => {
       eventListener.remove();
+      eventEmitter.removeAllListeners(eventName);
     };
   }, [eventName, listener]);
 };
